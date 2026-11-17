@@ -1,0 +1,6 @@
+{
+  "name": "Фронт 1916",
+  "description": "3D тактический шутер о Первой мировой войне с сюжетной кампанией, детализированными 3D-моделями, выбором классов, мобильным управлением и оркестровой музыкой.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

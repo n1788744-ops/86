@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Subtle shadow shield inside 66dp safe zone (coords 21..87) -->
+    <path
+        android:fillColor="#26000000"
+        android:pathData="M54,23 L78,33 L75,65 L54,86 L33,65 L30,33 Z" />
+    <!-- Brass outer chevron shield -->
+    <path
+        android:fillColor="#C69C53"
+        android:pathData="M54,24 L76,33 L73,63 L54,82 L35,63 L32,33 Z" />
+    <!-- Inner dark gunmetal shield -->
+    <path
+        android:fillColor="#1F272E"
+        android:pathData="M54,28 L72,35.5 L69.5,61 L54,77 L38.5,61 L36,35.5 Z" />
+    <!-- Crossed rifles / bayonets silhouette -->
+    <path
+        android:fillColor="#D9B46A"
+        android:pathData="M39,65 L66,38 L69,41 L42,68 Z" />
+    <path
+        android:fillColor="#D9B46A"
+        android:pathData="M69,65 L42,38 L39,41 L66,68 Z" />
+    <!-- Steel Adrian helmet silhouette -->
+    <path
+        android:fillColor="#ECE6D8"
+        android:pathData="M54,36 C44,36 39,42 39,49 L35,52 L36,54 L72,54 L73,52 L69,49 C69,42 64,36 54,36 Z" />
+    <!-- Helmet crest ridge -->
+    <path
+        android:fillColor="#C69C53"
+        android:pathData="M51.5,33 L56.5,33 L55.5,46 L52.5,46 Z" />
+    <!-- Officer star chevron at base -->
+    <path
+        android:fillColor="#C69C53"
+        android:pathData="M54,59 L56,64 L61,64 L57,67 L58.5,72 L54,69 L49.5,72 L51,67 L47,64 L52,64 Z" />
+</vector>
