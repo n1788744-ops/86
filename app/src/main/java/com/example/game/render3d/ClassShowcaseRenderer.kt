@@ -20,7 +20,7 @@ class ClassShowcaseRenderer : GLSurfaceView.Renderer {
     private val mvpMat = FloatArray(16)
 
     @Volatile
-    var uniformStyle: UniformStyle = UniformStyle.HORIZON_BLUE
+    var uniformStyle: UniformStyle = UniformStyle.BRITISH_KHAKI
 
     @Volatile
     var weaponType: WeaponType = WeaponType.BOLT_RIFLE
@@ -57,7 +57,6 @@ class ClassShowcaseRenderer : GLSurfaceView.Renderer {
         GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT or GLES30.GL_DEPTH_BUFFER_BIT)
         shader.use()
 
-        // Camera looking at full-body soldier standing on trench duckboard
         Matrix.setLookAtM(
             viewMat, 0,
             0f, 1.15f, 3.25f,
@@ -68,19 +67,20 @@ class ClassShowcaseRenderer : GLSurfaceView.Renderer {
 
         GLES30.glUniform3f(shader.uSunDirLoc, 0.55f, 0.72f, 0.42f)
         GLES30.glUniform3f(shader.uSunColorLoc, 1.05f, 0.96f, 0.84f)
-        GLES30.glUniform3f(shader.uAmbientTopLoc, 0.42f, 0.48f, 0.54f)
-        GLES30.glUniform3f(shader.uAmbientBottomLoc, 0.20f, 0.18f, 0.16f)
+        GLES30.glUniform3f(shader.uAmbientTopLoc, 0.44f, 0.48f, 0.52f)
+        GLES30.glUniform3f(shader.uAmbientBottomLoc, 0.22f, 0.19f, 0.16f)
         GLES30.glUniform3f(shader.uCameraPosLoc, 0f, 1.15f, 3.25f)
         GLES30.glUniform3f(shader.uFogColorLoc, 0.11f, 0.13f, 0.15f)
         GLES30.glUniform1f(shader.uFogDensityLoc, 0.03f)
 
-        // Draw trench props behind soldier for grounded environmental context
         drawProp(models.sandbagWall, -1.25f, 0f, -1.35f, 18f, 0.85f)
         drawProp(models.sandbagWall, 1.25f, 0f, -1.35f, -18f, 0.85f)
         drawProp(models.timberWall, 0f, 0f, -1.65f, 0f, 1.1f)
         drawProp(models.supplyCrate, -0.85f, 0f, -0.35f, 24f, 0.75f)
+        // Standing Union Jack banner in background
+        drawProp(models.flagPole, 1.15f, -1.75f, -1.1f, 0f, 0.82f)
+        drawProp(models.britishFlagCloth, 1.15f, -1.75f, -1.1f, -20f, 0.82f)
 
-        // Draw standing 3D Soldier in selected uniform
         val cHex = uniformStyle.coatColorHex
         val coatRgb = floatArrayOf(
             ((cHex shr 16) and 0xFF) / 255f,
@@ -101,18 +101,20 @@ class ClassShowcaseRenderer : GLSurfaceView.Renderer {
             isCrouching = false,
             isDead = false,
             deathProgress = 0f,
-            isEntente = true,
+            isBritish = true,
             coatRgb = coatRgb,
             scale = 1.0f
         )
 
-        // Draw floating showcase 3D Weapon beside/below for crisp weapon inspection
         val wMesh = when (weaponType) {
             WeaponType.BOLT_RIFLE -> models.boltRifleBody
             WeaponType.TRENCH_SMG -> models.smgBody
             WeaponType.LIGHT_MG -> models.lmgBody
             WeaponType.SCOPED_RIFLE -> models.sniperRifleBody
             WeaponType.OFFICER_REVOLVER -> models.revolverBody
+            WeaponType.TRENCH_SHOTGUN -> models.trenchShotgunBody
+            WeaponType.MAUSER_PISTOL -> models.mauserC96Body
+            WeaponType.STRIP_LMG -> models.stripLmgBody
         }
         Matrix.setIdentityM(modelMat, 0)
         Matrix.translateM(modelMat, 0, 0f, 0.28f, 0.95f)

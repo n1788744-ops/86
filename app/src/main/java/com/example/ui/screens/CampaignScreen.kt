@@ -7,7 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -38,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -46,8 +46,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.game.data.PlayerProfileState
 import com.example.game.model.CampaignChapter
+import com.example.game.model.Faction
 import com.example.game.model.GameCatalog
 import com.example.game.model.TheatreBiome
+import com.example.ui.components.FactionFlagBadge
 import com.example.ui.components.RankHeaderBar
 import com.example.ui.components.Ww1CommandButton
 import com.example.ui.theme.AshGrey
@@ -75,14 +77,10 @@ fun CampaignScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(TrenchBlack, GunmetalDark, TrenchBlack)
-                )
-            )
+            .background(Brush.verticalGradient(listOf(TrenchBlack, GunmetalDark, TrenchBlack)))
             .windowInsetsPadding(WindowInsets.safeDrawing)
     ) {
-        RankHeaderBar(title = "СЮЖЕТНАЯ КАМПАНИЯ", profile = profile)
+        RankHeaderBar(title = "КАМПАНИЯ: БРИТАНИЯ VS ОСМАНЫ", profile = profile)
 
         LazyColumn(
             modifier = Modifier
@@ -107,12 +105,11 @@ fun CampaignScreen(
                         .clickable { onSelectChapter(chapter) }
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        // Tactical Theatre Mini-Artwork Banner
                         TheatreMapBanner(
                             biome = chapter.theatre,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(86.dp)
+                                .height(92.dp)
                                 .clip(RoundedCornerShape(4.dp))
                         )
 
@@ -124,11 +121,19 @@ fun CampaignScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = chapter.dateAndFrontRu,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = BrassGold
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    FactionFlagBadge(Faction.GREAT_BRITAIN, Modifier.width(20.dp).height(13.dp))
+                                    Text(
+                                        text = chapter.dateAndFrontRu,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = BrassGold
+                                    )
+                                    FactionFlagBadge(Faction.OTTOMAN_EMPIRE, Modifier.width(20.dp).height(13.dp))
+                                }
+                                Spacer(modifier = Modifier.height(2.dp))
                                 Text(
                                     text = chapter.titleRu,
                                     style = MaterialTheme.typography.headlineMedium,
@@ -151,11 +156,7 @@ fun CampaignScreen(
                                         modifier = Modifier.size(14.dp)
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "ПРОЙДЕНО",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = ParchmentIvory
-                                    )
+                                    Text("ПРОЙДЕНО", style = MaterialTheme.typography.labelSmall, color = ParchmentIvory)
                                 }
                             }
                         }
@@ -193,7 +194,6 @@ fun CampaignScreen(
             }
         }
 
-        // Bottom Tactical Launch Bar
         Surface(
             color = TrenchBlack.copy(alpha = 0.95f),
             border = BorderStroke(1.dp, BrassMuted.copy(alpha = 0.4f))
@@ -249,60 +249,46 @@ private fun TheatreMapBanner(
         val w = size.width
         val h = size.height
         val (skyTop, skyBot, groundColor) = when (biome) {
-            TheatreBiome.MARNE_TRENCHES -> Triple(Color(0xFF283036), Color(0xFF5D5342), Color(0xFF2B241A))
-            TheatreBiome.VERDUN_CRATERS -> Triple(Color(0xFF231D1B), Color(0xFF6B3E28), Color(0xFF211B18))
-            TheatreBiome.COASTAL_LANDING -> Triple(Color(0xFF3A4958), Color(0xFF7D8C96), Color(0xFF3E3B30))
-            TheatreBiome.ALPINE_FORTRESS -> Triple(Color(0xFF2B3847), Color(0xFF6A7D8F), Color(0xFF363A3E))
+            TheatreBiome.GALLIPOLI_COAST -> Triple(Color(0xFF3A4958), Color(0xFF7D8C96), Color(0xFF3E3B30))
+            TheatreBiome.BASRA_OUTSKIRTS -> Triple(Color(0xFF4F4432), Color(0xFF9E845E), Color(0xFF4A3D29))
+            TheatreBiome.GAZA_CITY -> Triple(Color(0xFF433A31), Color(0xFF9C7D5A), Color(0xFF3B3126))
+            TheatreBiome.JERUSALEM_CITADEL -> Triple(Color(0xFF2D3847), Color(0xFF767F8A), Color(0xFF383430))
         }
 
-        drawRect(
-            brush = Brush.verticalGradient(listOf(skyTop, skyBot)),
-            size = size
-        )
+        drawRect(brush = Brush.verticalGradient(listOf(skyTop, skyBot)), size = size)
 
-        // Distant silhouette hills / cliffs / troopship
-        val ridge = Path().apply {
-            moveTo(0f, h * 0.68f)
-            lineTo(w * 0.22f, h * 0.50f)
-            lineTo(w * 0.48f, h * 0.60f)
-            lineTo(w * 0.72f, h * 0.44f)
-            lineTo(w, h * 0.62f)
-            lineTo(w, h)
-            lineTo(0f, h)
-            close()
-        }
-        drawPath(ridge, groundColor)
+        if (biome == TheatreBiome.GAZA_CITY || biome == TheatreBiome.JERUSALEM_CITADEL) {
+            // Whole City Skyline Silhouettes (sandstone blocks, domes, clocktower)
+            val bColor = Color(0xFF27211B)
+            val bHighlight = Color(0xFF42362B)
+            drawRect(bColor, Offset(w * 0.05f, h * 0.42f), Size(w * 0.14f, h * 0.58f))
+            drawRect(bHighlight, Offset(w * 0.21f, h * 0.50f), Size(w * 0.12f, h * 0.50f))
+            drawRect(bColor, Offset(w * 0.36f, h * 0.36f), Size(w * 0.16f, h * 0.64f))
+            // Tall Clocktower / Minaret
+            drawRect(bColor, Offset(w * 0.57f, h * 0.18f), Size(w * 0.07f, h * 0.82f))
+            drawCircle(bColor, radius = w * 0.036f, center = Offset(w * 0.605f, h * 0.18f))
+            drawRect(bHighlight, Offset(w * 0.68f, h * 0.46f), Size(w * 0.14f, h * 0.54f))
+            drawRect(bColor, Offset(w * 0.84f, h * 0.38f), Size(w * 0.12f, h * 0.62f))
+        } else {
+            val ridge = Path().apply {
+                moveTo(0f, h * 0.68f)
+                lineTo(w * 0.22f, h * 0.50f)
+                lineTo(w * 0.48f, h * 0.60f)
+                lineTo(w * 0.72f, h * 0.44f)
+                lineTo(w, h * 0.62f)
+                lineTo(w, h)
+                lineTo(0f, h)
+                close()
+            }
+            drawPath(ridge, groundColor)
 
-        if (biome == TheatreBiome.COASTAL_LANDING) {
-            // Sea horizon & troopship silhouette with smoke
-            drawRect(
-                color = Color(0xFF2C4252),
-                topLeft = Offset(0f, h * 0.58f),
-                size = androidx.compose.ui.geometry.Size(w * 0.55f, h * 0.16f)
-            )
-            // Ship hull + funnels
-            drawRect(Color(0xFF1F2326), Offset(w * 0.20f, h * 0.49f), androidx.compose.ui.geometry.Size(w * 0.16f, h * 0.09f))
-            drawRect(Color(0xFF1A1D20), Offset(w * 0.25f, h * 0.39f), androidx.compose.ui.geometry.Size(w * 0.018f, h * 0.10f))
-            drawRect(Color(0xFF1A1D20), Offset(w * 0.29f, h * 0.39f), androidx.compose.ui.geometry.Size(w * 0.018f, h * 0.10f))
-            drawCircle(Color(0x55222528), radius = h * 0.12f, center = Offset(w * 0.26f, h * 0.26f))
-            drawCircle(Color(0x33222528), radius = h * 0.16f, center = Offset(w * 0.30f, h * 0.14f))
+            if (biome == TheatreBiome.GALLIPOLI_COAST) {
+                drawRect(Color(0xFF2C4252), Offset(0f, h * 0.58f), Size(w * 0.55f, h * 0.16f))
+                drawRect(Color(0xFF1F2326), Offset(w * 0.20f, h * 0.49f), Size(w * 0.16f, h * 0.09f))
+                drawRect(Color(0xFF1A1D20), Offset(w * 0.25f, h * 0.39f), Size(w * 0.018f, h * 0.10f))
+                drawRect(Color(0xFF1A1D20), Offset(w * 0.29f, h * 0.39f), Size(w * 0.018f, h * 0.10f))
+                drawCircle(Color(0x55222528), radius = h * 0.12f, center = Offset(w * 0.26f, h * 0.26f))
+            }
         }
-
-        // Foreground trench posts & barbed wire zig-zag
-        for (i in 0..5) {
-            val px = w * (0.08f + i * 0.17f)
-            drawLine(
-                color = Color(0xFF17130F),
-                start = Offset(px, h * 0.65f),
-                end = Offset(px + 4f, h * 0.96f),
-                strokeWidth = 3.5f
-            )
-        }
-        drawLine(
-            color = Color(0x88C69C53),
-            start = Offset(0f, h * 0.78f),
-            end = Offset(w, h * 0.74f),
-            strokeWidth = 1.5f
-        )
     }
 }

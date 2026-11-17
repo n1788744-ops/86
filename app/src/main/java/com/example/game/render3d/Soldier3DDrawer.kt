@@ -22,7 +22,7 @@ object Soldier3DDrawer {
         isCrouching: Boolean,
         isDead: Boolean,
         deathProgress: Float,
-        isEntente: Boolean,
+        isBritish: Boolean,
         coatRgb: FloatArray,
         scale: Float = 1f
     ) {
@@ -33,7 +33,6 @@ object Soldier3DDrawer {
             Matrix.scaleM(modelMat, 0, scale, scale, scale)
         }
         if (isDead) {
-            // Fall backward cleanly onto the mud
             val angle = deathProgress.coerceIn(0f, 1f) * 86f
             Matrix.translateM(modelMat, 0, 0f, 0.18f, 0f)
             Matrix.rotateM(modelMat, 0, -angle, 1f, 0f, 0f)
@@ -46,23 +45,18 @@ object Soldier3DDrawer {
         val coatG = coatRgb[1]
         val coatB = coatRgb[2]
 
-        // 1. Torso (greatcoat + leather straps + backpack)
         drawPart(shader, vpMatrix, modelMat, models.soldierTorso, coatR, coatG, coatB)
 
-        // 2. Head & Helmet (Adrian for Entente, Stahlhelm for Central Powers)
-        val headMesh = if (isEntente) models.soldierHeadAdrian else models.soldierHeadStahlhelm
+        val headMesh = if (isBritish) models.soldierHeadBrodie else models.soldierHeadOttoman
         drawPart(shader, vpMatrix, modelMat, headMesh, 1f, 1f, 1f)
 
-        // 3. Left & Right Legs
         drawTransformedPart(shader, vpMatrix, modelMat, models.soldierLeg, -0.11f, 0.75f, 0f, legSwing, 0f, 0f, coatR * 0.9f, coatG * 0.9f, coatB * 0.9f)
         drawTransformedPart(shader, vpMatrix, modelMat, models.soldierLeg, 0.11f, 0.75f, 0f, -legSwing, 0f, 0f, coatR * 0.9f, coatG * 0.9f, coatB * 0.9f)
 
-        // 4. Left & Right Arms (aiming rifle forward +Z)
         val aimPitch = if (isDead) -15f else -62f
         drawTransformedPart(shader, vpMatrix, modelMat, models.soldierArm, -0.24f, 1.32f, 0.04f, aimPitch, 22f, 0f, coatR, coatG, coatB)
         drawTransformedPart(shader, vpMatrix, modelMat, models.soldierArm, 0.24f, 1.32f, 0.04f, aimPitch, -10f, 0f, coatR, coatG, coatB)
 
-        // 5. Held 3D Rifle
         Matrix.setIdentityM(partMat, 0)
         Matrix.multiplyMM(partMat, 0, modelMat, 0, partMat, 0)
         Matrix.translateM(partMat, 0, 0.08f, 1.16f, 0.34f)

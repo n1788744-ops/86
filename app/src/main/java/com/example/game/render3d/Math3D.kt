@@ -2,9 +2,8 @@ package com.example.game.render3d
 
 import com.example.game.model.TheatreBiome
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
-import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -26,6 +25,39 @@ data class Vec3(val x: Float = 0f, val y: Float = 0f, val z: Float = 0f) {
     )
 }
 
+data class BoxCollider2D(
+    val minX: Float,
+    val maxX: Float,
+    val minZ: Float,
+    val maxZ: Float
+) {
+    fun pushOut(px: Float, pz: Float, radius: Float): Pair<Float, Float> {
+        val cx = px.coerceIn(minX, maxX)
+        val cz = pz.coerceIn(minZ, maxZ)
+        val dx = px - cx
+        val dz = pz - cz
+        val dSq = dx * dx + dz * dz
+        if (dSq >= radius * radius) return px to pz
+        if (dSq > 1e-6f) {
+            val d = sqrt(dSq)
+            val push = radius - d
+            return (px + (dx / d) * push) to (pz + (dz / d) * push)
+        }
+        // Inside AABB: push out along nearest edge
+        val dLeft = abs(px - minX)
+        val dRight = abs(maxX - px)
+        val dBack = abs(pz - minZ)
+        val dFront = abs(maxZ - pz)
+        val m = minOf(dLeft, dRight, dBack, dFront)
+        return when (m) {
+            dLeft -> (minX - radius) to pz
+            dRight -> (maxX + radius) to pz
+            dBack -> px to (minZ - radius)
+            else -> px to (maxZ + radius)
+        }
+    }
+}
+
 object Math3D {
     fun degToRad(deg: Float): Float = deg * (PI.toFloat() / 180f)
 
@@ -45,9 +77,6 @@ object Math3D {
         return Vec3(cos(yaw), 0f, sin(yaw)).normalized()
     }
 
-    /**
-     * Ray vs Sphere intersection distance (> 0f if hit, -1f if miss).
-     */
     fun raySphereDistance(
         origin: Vec3,
         dir: Vec3,
@@ -64,67 +93,53 @@ object Math3D {
     }
 
     /**
-     * Procedural battlefield terrain height shared by 3D mesh builder, player physics, and AI.
-     * Coordinates span roughly X in [-48..48], Z in [-56..40].
-     * Player starts near Z = +22 facing North (-Z).
+     * Shared procedural terrain height for Gallipoli coast, Basra riverfront, Gaza city, and Jerusalem citadel.
      */
     fun terrainHeightAt(x: Float, z: Float, biome: TheatreBiome): Float {
         var h = 0f
 
-        // Base terrain macro relief per biome
         when (biome) {
-            TheatreBiome.MARNE_TRENCHES -> {
-                h += 0.35f * sin(x * 0.08f) * cos(z * 0.07f)
-                // Slight ridge in the north
-                if (z < -18f) h += ((-18f - z) * 0.05f).coerceAtMost(1.8f)
-            }
-            TheatreBiome.VERDUN_CRATERS -> {
-                h += 0.5f * sin(x * 0.11f + 0.6f) * cos(z * 0.09f)
-                // Shell craters
-                h -= craterDip(x, z, -6f, 2f, 4.2f, 1.05f)
-                h -= craterDip(x, z, 8f, -4f, 4.8f, 1.15f)
-                h -= craterDip(x, z, -12f, -14f, 4.0f, 0.95f)
-                h -= craterDip(x, z, 5f, -20f, 5.0f, 1.2f)
-                h -= craterDip(x, z, 15f, 8f, 3.8f, 0.9f)
-            }
-            TheatreBiome.COASTAL_LANDING -> {
-                // Slopes down toward sea in the south (z > 24), rises toward cliffs in the north (z < -10)
+            TheatreBiome.GALLIPOLI_COAST -> {
                 val slope = ((20f - z) * 0.095f).coerceIn(-2.2f, 4.5f)
-                h += slope + 0.45f * sin(x * 0.14f) * cos(z * 0.11f)
-                // Rocky ridge bumps
-                h += 0.35f * sin(x * 0.35f + z * 0.25f)
+                h += slope + 0.40f * sin(x * 0.14f) * cos(z * 0.11f)
+                h += 0.28f * sin(x * 0.35f + z * 0.25f)
+                h -= trenchChannel(z, 18f, 2.1f, 0.85f) * smoothBounds(x, 24f)
+                h -= trenchChannel(z, 0f, 1.9f, 0.78f) * smoothBounds(x, 22f)
+                h -= trenchChannel(z, -20f, 2.0f, 0.85f) * smoothBounds(x, 24f)
             }
-            TheatreBiome.ALPINE_FORTRESS -> {
-                // Steep terraced mountain slope
-                val rise = ((24f - z) * 0.11f).coerceIn(0f, 5.6f)
-                h += rise + 0.55f * sin(x * 0.13f) * sin(z * 0.12f)
-                // Outer rock walls on sides
-                if (kotlin.math.abs(x) > 26f) {
-                    h += (kotlin.math.abs(x) - 26f) * 0.32f
-                }
+            TheatreBiome.BASRA_OUTSKIRTS -> {
+                h += 0.32f * sin(x * 0.09f) * cos(z * 0.08f)
+                h -= craterDip(x, z, -5f, 4f, 4.0f, 0.85f)
+                h -= craterDip(x, z, 7f, -8f, 4.4f, 0.95f)
+                h -= trenchChannel(z, 18f, 2.1f, 0.82f) * smoothBounds(x, 24f)
+                h -= trenchChannel(z, -20f, 2.0f, 0.82f) * smoothBounds(x, 24f)
+            }
+            TheatreBiome.GAZA_CITY -> {
+                // Flat terraced city streets with slight rise toward the northern clocktower plaza
+                val gentleRise = ((18f - z) * 0.032f).coerceIn(0f, 2.2f)
+                h += gentleRise + 0.08f * sin(x * 0.2f) * cos(z * 0.2f)
+                // Shallow bomb crater in mid square
+                h -= craterDip(x, z, -2.5f, -9f, 3.2f, 0.45f)
+            }
+            TheatreBiome.JERUSALEM_CITADEL -> {
+                // Historic stone city rising gently toward the fortified citadel in the north
+                val citadelRise = ((22f - z) * 0.055f).coerceIn(0f, 3.4f)
+                h += citadelRise + 0.12f * sin(x * 0.16f) * cos(z * 0.18f)
             }
         }
-
-        // Carved friendly & forward trenches (easy natural cover!)
-        // Friendly trench around Z = 18
-        h -= trenchChannel(z, 18f, 2.1f, 0.88f) * smoothBounds(x, 24f)
-        // Mid no-man's-land trench around Z = 0
-        h -= trenchChannel(z, 0f, 1.9f, 0.78f) * smoothBounds(x, 22f)
-        // Enemy forward trench around Z = -20
-        h -= trenchChannel(z, -20f, 2.0f, 0.85f) * smoothBounds(x, 24f)
 
         return h
     }
 
     private fun trenchChannel(z: Float, centerZ: Float, halfWidth: Float, depth: Float): Float {
-        val d = kotlin.math.abs(z - centerZ)
+        val d = abs(z - centerZ)
         if (d >= halfWidth) return 0f
         val t = 1f - (d / halfWidth)
         return depth * t * t * (3f - 2f * t)
     }
 
     private fun smoothBounds(x: Float, limit: Float): Float {
-        val ax = kotlin.math.abs(x)
+        val ax = abs(x)
         if (ax >= limit) return 0f
         if (ax <= limit - 4f) return 1f
         return ((limit - ax) / 4f).coerceIn(0f, 1f)
@@ -136,10 +151,9 @@ object Math3D {
         val dist = sqrt(dx * dx + dz * dz)
         if (dist > r) return 0f
         val norm = dist / r
-        // Slight raised rim around 0.85r, deep center
         return if (norm > 0.75f) {
             val rim = sin((norm - 0.75f) / 0.25f * PI.toFloat())
-            -depth * 0.22f * rim
+            -depth * 0.20f * rim
         } else {
             val k = 1f - (norm / 0.75f)
             depth * k * k

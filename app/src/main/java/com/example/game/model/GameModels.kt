@@ -4,8 +4,14 @@ enum class GameScreen {
     MAIN_MENU,
     CAMPAIGN,
     CLASS_LOADOUT,
+    SHOP,
     SETTINGS,
     BATTLE
+}
+
+enum class Faction {
+    GREAT_BRITAIN,
+    OTTOMAN_EMPIRE
 }
 
 enum class WeaponType {
@@ -13,7 +19,10 @@ enum class WeaponType {
     TRENCH_SMG,
     LIGHT_MG,
     SCOPED_RIFLE,
-    OFFICER_REVOLVER
+    OFFICER_REVOLVER,
+    TRENCH_SHOTGUN,
+    MAUSER_PISTOL,
+    STRIP_LMG
 }
 
 enum class UniformStyle(
@@ -22,39 +31,44 @@ enum class UniformStyle(
     val coatColorHex: Long,
     val trouserColorHex: Long,
     val helmetColorHex: Long,
-    val descriptionRu: String
+    val descriptionRu: String,
+    val priceStars: Int = 0
 ) {
-    HORIZON_BLUE(
-        id = "horizon_blue",
-        titleRu = "Голубой горизонт (1915)",
-        coatColorHex = 0xFF5D7FA3,
-        trouserColorHex = 0xFF4C6B8A,
-        helmetColorHex = 0xFF475C70,
-        descriptionRu = "Классическая шинель и каска Адриана армии Антанты."
+    BRITISH_KHAKI(
+        id = "british_khaki",
+        titleRu = "Британский хаки (1915)",
+        coatColorHex = 0xFF827553,
+        trouserColorHex = 0xFF706446,
+        helmetColorHex = 0xFF5D5740,
+        descriptionRu = "Классическая форма Британской империи с каской Броди.",
+        priceStars = 0
     ),
-    KHAKI_EXPEDITION(
-        id = "khaki_expedition",
-        titleRu = "Экспедиционный хаки",
-        coatColorHex = 0xFF7D7452,
-        trouserColorHex = 0xFF6A6243,
-        helmetColorHex = 0xFF5B563E,
-        descriptionRu = "Полевая форма штурмовых частей побережья и Галлиполи."
+    GALLIPOLI_DESERT(
+        id = "gallipoli_desert",
+        titleRu = "Песочный корпус АНЗАК",
+        coatColorHex = 0xFFA38F68,
+        trouserColorHex = 0xFF8C7A56,
+        helmetColorHex = 0xFF736548,
+        descriptionRu = "Облегчённая пустынная форма для берега Галлиполи и Газы.",
+        priceStars = 110
     ),
-    ALPINE_SLATE(
-        id = "alpine_slate",
-        titleRu = "Альпийский серый",
-        coatColorHex = 0xFF5C6660,
-        trouserColorHex = 0xFF4A524D,
-        helmetColorHex = 0xFF404744,
-        descriptionRu = "Утеплённая горная форма для боёв на хребте Изонцо."
+    ROYAL_GUARD_SLATE(
+        id = "royal_guard_slate",
+        titleRu = "Королевский штурмовой",
+        coatColorHex = 0xFF4F5961,
+        trouserColorHex = 0xFF3E474E,
+        helmetColorHex = 0xFF373F45,
+        descriptionRu = "Тёмная уличная разгрузка для городских боёв в сумерках.",
+        priceStars = 160
     ),
-    STORM_DARK(
-        id = "storm_dark",
-        titleRu = "Штурмовой камуфляж",
-        coatColorHex = 0xFF3E4448,
-        trouserColorHex = 0xFF32363A,
-        helmetColorHex = 0xFF2D3134,
-        descriptionRu = "Усиленная разгрузка для ночных рейдов на траншеи."
+    OFFICER_OLIVE(
+        id = "officer_olive",
+        titleRu = "Полевой мундир штаба",
+        coatColorHex = 0xFF5E694C,
+        trouserColorHex = 0xFF4D573E,
+        helmetColorHex = 0xFF454D38,
+        descriptionRu = "Усиленная шинель командного состава британских экспедиционных сил.",
+        priceStars = 210
     )
 }
 
@@ -73,8 +87,36 @@ data class WeaponSpec(
     val reloadDurationSec: Float,
     val adsFov: Float,
     val baseSpread: Float,
-    val isAutomatic: Boolean
+    val isAutomatic: Boolean,
+    val pelletCount: Int = 1,
+    val priceStars: Int = 0
 )
+
+enum class ShopConsumable(
+    val id: String,
+    val titleRu: String,
+    val descriptionRu: String,
+    val priceStars: Int
+) {
+    MEDKIT(
+        id = "medkit",
+        titleRu = "Полевой бинт (Аптечка)",
+        descriptionRu = "Мгновенно восстанавливает +45 ОЗ прямо во время боя.",
+        priceStars = 50
+    ),
+    ARMOR_PLATE(
+        id = "armor_plate",
+        titleRu = "Нагрудная бронепластина",
+        descriptionRu = "+40 к максимальному запасу прочности на следующий бой.",
+        priceStars = 85
+    ),
+    ORDNANCE_PACK(
+        id = "ordnance_pack",
+        titleRu = "Ящик гранат и патронов",
+        descriptionRu = "+60% боезапаса и мгновенный заряд спецспособности в бою.",
+        priceStars = 75
+    )
+}
 
 data class PerkSpec(
     val id: String,
@@ -99,87 +141,87 @@ enum class SoldierClass(
         id = "officer",
         titleRu = "ОФИЦЕР",
         categoryRu = "КОМАНДОВАНИЕ",
-        roleSummaryRu = "Вызывает артудар по позициям врага и поднимает боевой дух отряда свистком.",
+        roleSummaryRu = "Вызывает залп корабельной/полевой артиллерии и поднимает отряд свистком.",
         specialAbilityRu = "АРТОБСТРЕЛ",
-        specialCooldownSec = 14f,
-        maxHealth = 110,
+        specialCooldownSec = 13f,
+        maxHealth = 115,
         moveSpeed = 5.6f,
         defaultWeaponId = "webley_mk6",
-        altWeaponId = "lebel_carbine",
-        defaultUniform = UniformStyle.HORIZON_BLUE
+        altWeaponId = "mauser_c96",
+        defaultUniform = UniformStyle.OFFICER_OLIVE
     ),
     RIFLEMAN(
         id = "rifleman",
         titleRu = "СТРЕЛОК",
         categoryRu = "ПЕХОТА",
-        roleSummaryRu = "Универсальный боец передовой. Точная магазинная винтовка со штыком и траншейной лопатой.",
-        specialAbilityRu = "ГРАНАТА F1",
-        specialCooldownSec = 9f,
-        maxHealth = 115,
-        moveSpeed = 5.4f,
-        defaultWeaponId = "lebel_1886",
-        altWeaponId = "lee_enfield",
-        defaultUniform = UniformStyle.HORIZON_BLUE
+        roleSummaryRu = "Основной пехотинец Британской армии. Точная магазинная винтовка Ли-Энфилд или Маузер.",
+        specialAbilityRu = "ГРАНАТА MILLS",
+        specialCooldownSec = 8.5f,
+        maxHealth = 120,
+        moveSpeed = 5.5f,
+        defaultWeaponId = "lee_enfield",
+        altWeaponId = "gewehr_98",
+        defaultUniform = UniformStyle.BRITISH_KHAKI
     ),
     ASSAULT(
         id = "assault",
         titleRu = "ШТУРМОВИК",
-        categoryRu = "ШТУРМ",
-        roleSummaryRu = "Мастер ближнего боя в узких окопах. Пистолет-пулемёт и связка осколочных гранат.",
+        categoryRu = "ГОРОДСКОЙ ШТУРМ",
+        roleSummaryRu = "Зачищает узкие улочки и окопы из дробовика Winchester M1897 или ПП MP-18.",
         specialAbilityRu = "ШТУРМ-ГРАНАТА",
         specialCooldownSec = 7f,
-        maxHealth = 120,
+        maxHealth = 125,
         moveSpeed = 6.0f,
         defaultWeaponId = "mp18_trench",
-        altWeaponId = "carcano_moschetto",
-        defaultUniform = UniformStyle.STORM_DARK
+        altWeaponId = "winchester_1897",
+        defaultUniform = UniformStyle.GALLIPOLI_DESERT
     ),
     MG_GUNNER(
         id = "mg_gunner",
         titleRu = "ПУЛЕМЁТЧИК",
         categoryRu = "ПОДДЕРЖКА",
-        roleSummaryRu = "Подавляет вражеские атаки шквальным огнём из ручного пулемёта с дисковым магазином.",
+        roleSummaryRu = "Подавляет османские укрепления плотным огнём пулемёта Льюиса или Гочкиса.",
         specialAbilityRu = "ОСКОЛОЧНЫЙ ЗАЛП",
-        specialCooldownSec = 11f,
-        maxHealth = 135,
-        moveSpeed = 4.6f,
+        specialCooldownSec = 10.5f,
+        maxHealth = 140,
+        moveSpeed = 4.7f,
         defaultWeaponId = "lewis_gun",
-        altWeaponId = "chauchat_1915",
-        defaultUniform = UniformStyle.KHAKI_EXPEDITION
+        altWeaponId = "hotchkiss_m1909",
+        defaultUniform = UniformStyle.BRITISH_KHAKI
     ),
     ENGINEER(
         id = "engineer",
         titleRu = "ИНЖЕНЕР",
         categoryRu = "САПЁР",
-        roleSummaryRu = "Восстанавливает здоровье и боезапас полевым комплектом. Эффективен в удержании сектора.",
+        roleSummaryRu = "Восстанавливает здоровье и боезапас в уличных и окопных боях.",
         specialAbilityRu = "ПОЛЕВАЯ АПТЕЧКА",
         specialCooldownSec = 10f,
-        maxHealth = 125,
-        moveSpeed = 5.2f,
-        defaultWeaponId = "carcano_moschetto",
-        altWeaponId = "lee_enfield",
-        defaultUniform = UniformStyle.ALPINE_SLATE
+        maxHealth = 130,
+        moveSpeed = 5.3f,
+        defaultWeaponId = "lee_enfield_carbine",
+        altWeaponId = "winchester_1897",
+        defaultUniform = UniformStyle.ROYAL_GUARD_SLATE
     ),
     SNIPER(
         id = "sniper",
         titleRu = "СНАЙПЕР",
         categoryRu = "РАЗВЕДКА",
-        roleSummaryRu = "Оптический прицел 3.5x позволяет поражать цели на дальней дистанции одним точным выстрелом.",
+        roleSummaryRu = "Оптический прицел 3.5x позволяет снимать стрелков с крыш и укреплений.",
         specialAbilityRu = "ДЫМОВАЯ ЗАВЕСА",
-        specialCooldownSec = 12f,
-        maxHealth = 95,
-        moveSpeed = 5.5f,
+        specialCooldownSec = 11.5f,
+        maxHealth = 100,
+        moveSpeed = 5.6f,
         defaultWeaponId = "smle_scoped",
-        altWeaponId = "lebel_1886",
-        defaultUniform = UniformStyle.ALPINE_SLATE
+        altWeaponId = "ross_mk3_scoped",
+        defaultUniform = UniformStyle.GALLIPOLI_DESERT
     )
 }
 
 enum class TheatreBiome {
-    MARNE_TRENCHES,
-    VERDUN_CRATERS,
-    COASTAL_LANDING,
-    ALPINE_FORTRESS
+    GALLIPOLI_COAST,
+    BASRA_OUTSKIRTS,
+    GAZA_CITY,
+    JERUSALEM_CITADEL
 }
 
 data class CampaignChapter(
@@ -199,123 +241,131 @@ data class CampaignChapter(
 object GameCatalog {
     val weapons: Map<String, WeaponSpec> = listOf(
         WeaponSpec(
-            id = "lebel_1886",
-            nameRu = "Lebel M1886",
-            subtitleRu = "Магазинная винтовка 8 мм",
-            type = WeaponType.BOLT_RIFLE,
-            damage = 88,
-            accuracy = 92,
-            fireRate = 34,
-            range = 90,
-            magazineSize = 8,
-            reserveAmmo = 48,
-            fireIntervalSec = 0.85f,
-            reloadDurationSec = 2.1f,
-            adsFov = 38f,
-            baseSpread = 0.004f,
-            isAutomatic = false
-        ),
-        WeaponSpec(
             id = "lee_enfield",
-            nameRu = "SMLE Mk III",
-            subtitleRu = "Быстрозарядная винтовка .303",
+            nameRu = "SMLE Mk III (Ли-Энфилд)",
+            subtitleRu = "Британская винтовка .303, 10 патр.",
             type = WeaponType.BOLT_RIFLE,
-            damage = 80,
-            accuracy = 88,
-            fireRate = 45,
-            range = 85,
+            damage = 84,
+            accuracy = 90,
+            fireRate = 48,
+            range = 88,
             magazineSize = 10,
             reserveAmmo = 60,
-            fireIntervalSec = 0.68f,
+            fireIntervalSec = 0.66f,
             reloadDurationSec = 1.9f,
-            adsFov = 40f,
-            baseSpread = 0.005f,
-            isAutomatic = false
+            adsFov = 39f,
+            baseSpread = 0.004f,
+            isAutomatic = false,
+            priceStars = 0
         ),
         WeaponSpec(
-            id = "lebel_carbine",
-            nameRu = "Berthier Карабин",
-            subtitleRu = "Облегчённый окопный карабин",
+            id = "gewehr_98",
+            nameRu = "Mauser Gewehr 98 (Осман. трофей)",
+            subtitleRu = "Длинноствольная винтовка 7.92 мм",
             type = WeaponType.BOLT_RIFLE,
-            damage = 74,
-            accuracy = 82,
-            fireRate = 52,
-            range = 75,
+            damage = 94,
+            accuracy = 94,
+            fireRate = 38,
+            range = 94,
             magazineSize = 5,
             reserveAmmo = 45,
-            fireIntervalSec = 0.58f,
-            reloadDurationSec = 1.6f,
+            fireIntervalSec = 0.78f,
+            reloadDurationSec = 1.85f,
+            adsFov = 36f,
+            baseSpread = 0.003f,
+            isAutomatic = false,
+            priceStars = 150
+        ),
+        WeaponSpec(
+            id = "lee_enfield_carbine",
+            nameRu = "SMLE Карабин сапёра",
+            subtitleRu = "Укороченный окопный карабин",
+            type = WeaponType.BOLT_RIFLE,
+            damage = 76,
+            accuracy = 83,
+            fireRate = 54,
+            range = 74,
+            magazineSize = 10,
+            reserveAmmo = 50,
+            fireIntervalSec = 0.56f,
+            reloadDurationSec = 1.65f,
             adsFov = 42f,
-            baseSpread = 0.007f,
-            isAutomatic = false
+            baseSpread = 0.006f,
+            isAutomatic = false,
+            priceStars = 0
         ),
         WeaponSpec(
             id = "mp18_trench",
             nameRu = "MP-18 Траншейный",
-            subtitleRu = "Пистолет-пулемёт 9 мм",
+            subtitleRu = "Пистолет-пулемёт 9 мм, 32 патр.",
             type = WeaponType.TRENCH_SMG,
-            damage = 34,
-            accuracy = 62,
+            damage = 35,
+            accuracy = 64,
             fireRate = 88,
-            range = 42,
+            range = 44,
             magazineSize = 32,
             reserveAmmo = 160,
             fireIntervalSec = 0.11f,
             reloadDurationSec = 2.0f,
             adsFov = 48f,
-            baseSpread = 0.024f,
-            isAutomatic = true
+            baseSpread = 0.022f,
+            isAutomatic = true,
+            priceStars = 0
         ),
         WeaponSpec(
-            id = "carcano_moschetto",
-            nameRu = "Carcano Moschetto",
-            subtitleRu = "Штурмовой карабин со штыком",
-            type = WeaponType.BOLT_RIFLE,
-            damage = 76,
-            accuracy = 84,
+            id = "winchester_1897",
+            nameRu = "Winchester M1897 «Окопная метла»",
+            subtitleRu = "Помповый дробовик (6 картечин)",
+            type = WeaponType.TRENCH_SHOTGUN,
+            damage = 28,
+            accuracy = 52,
             fireRate = 50,
-            range = 78,
+            range = 34,
             magazineSize = 6,
-            reserveAmmo = 54,
-            fireIntervalSec = 0.62f,
-            reloadDurationSec = 1.7f,
-            adsFov = 42f,
-            baseSpread = 0.006f,
-            isAutomatic = false
+            reserveAmmo = 36,
+            fireIntervalSec = 0.65f,
+            reloadDurationSec = 2.1f,
+            adsFov = 52f,
+            baseSpread = 0.068f,
+            isAutomatic = false,
+            pelletCount = 6,
+            priceStars = 180
         ),
         WeaponSpec(
             id = "lewis_gun",
-            nameRu = "Пулемёт Льюиса",
-            subtitleRu = "Ручной пулемёт, диск 47 патр.",
+            nameRu = "Пулемёт Льюиса Mk I",
+            subtitleRu = "Британский ручной пулемёт, 47 патр.",
             type = WeaponType.LIGHT_MG,
             damage = 44,
-            accuracy = 70,
+            accuracy = 72,
             fireRate = 80,
-            range = 72,
+            range = 74,
             magazineSize = 47,
             reserveAmmo = 188,
             fireIntervalSec = 0.14f,
-            reloadDurationSec = 2.6f,
+            reloadDurationSec = 2.5f,
             adsFov = 44f,
-            baseSpread = 0.018f,
-            isAutomatic = true
+            baseSpread = 0.017f,
+            isAutomatic = true,
+            priceStars = 0
         ),
         WeaponSpec(
-            id = "chauchat_1915",
-            nameRu = "CSRG Chauchat 1915",
-            subtitleRu = "Тяжёлый ручной пулемёт 8 мм",
-            type = WeaponType.LIGHT_MG,
+            id = "hotchkiss_m1909",
+            nameRu = "Hotchkiss M1909",
+            subtitleRu = "Ленточный пулемёт с радиатором",
+            type = WeaponType.STRIP_LMG,
             damage = 54,
-            accuracy = 66,
-            fireRate = 68,
-            range = 76,
-            magazineSize = 20,
-            reserveAmmo = 140,
-            fireIntervalSec = 0.21f,
-            reloadDurationSec = 2.3f,
-            adsFov = 44f,
-            baseSpread = 0.020f,
-            isAutomatic = true
+            accuracy = 78,
+            fireRate = 70,
+            range = 82,
+            magazineSize = 30,
+            reserveAmmo = 180,
+            fireIntervalSec = 0.17f,
+            reloadDurationSec = 2.2f,
+            adsFov = 42f,
+            baseSpread = 0.013f,
+            isAutomatic = true,
+            priceStars = 230
         ),
         WeaponSpec(
             id = "smle_scoped",
@@ -323,21 +373,40 @@ object GameCatalog {
             subtitleRu = "Винтовка с оптикой 3.5x",
             type = WeaponType.SCOPED_RIFLE,
             damage = 100,
-            accuracy = 99,
-            fireRate = 30,
-            range = 100,
+            accuracy = 98,
+            fireRate = 32,
+            range = 98,
             magazineSize = 5,
             reserveAmmo = 35,
-            fireIntervalSec = 1.0f,
-            reloadDurationSec = 2.2f,
+            fireIntervalSec = 0.96f,
+            reloadDurationSec = 2.1f,
             adsFov = 19f,
             baseSpread = 0.001f,
-            isAutomatic = false
+            isAutomatic = false,
+            priceStars = 0
+        ),
+        WeaponSpec(
+            id = "ross_mk3_scoped",
+            nameRu = "Ross Mk III (Оптика)",
+            subtitleRu = "Канадская снайперская винтовка",
+            type = WeaponType.SCOPED_RIFLE,
+            damage = 115,
+            accuracy = 100,
+            fireRate = 40,
+            range = 100,
+            magazineSize = 5,
+            reserveAmmo = 40,
+            fireIntervalSec = 0.78f,
+            reloadDurationSec = 1.95f,
+            adsFov = 17f,
+            baseSpread = 0.0008f,
+            isAutomatic = false,
+            priceStars = 260
         ),
         WeaponSpec(
             id = "webley_mk6",
             nameRu = "Webley Mk VI",
-            subtitleRu = "Офицерский револьвер .455",
+            subtitleRu = "Британский револьвер .455",
             type = WeaponType.OFFICER_REVOLVER,
             damage = 64,
             accuracy = 78,
@@ -346,10 +415,29 @@ object GameCatalog {
             magazineSize = 6,
             reserveAmmo = 48,
             fireIntervalSec = 0.34f,
-            reloadDurationSec = 1.6f,
+            reloadDurationSec = 1.55f,
             adsFov = 48f,
             baseSpread = 0.010f,
-            isAutomatic = false
+            isAutomatic = false,
+            priceStars = 0
+        ),
+        WeaponSpec(
+            id = "mauser_c96",
+            nameRu = "Mauser C96 (Кобура-приклад)",
+            subtitleRu = "Полуавтоматический пистолет-карабин",
+            type = WeaponType.MAUSER_PISTOL,
+            damage = 58,
+            accuracy = 84,
+            fireRate = 76,
+            range = 60,
+            magazineSize = 10,
+            reserveAmmo = 70,
+            fireIntervalSec = 0.22f,
+            reloadDurationSec = 1.5f,
+            adsFov = 45f,
+            baseSpread = 0.008f,
+            isAutomatic = false,
+            priceStars = 140
         )
     ).associateBy { it.id }
 
@@ -357,60 +445,60 @@ object GameCatalog {
         PerkSpec("hardened", "Закалённый боец", "+15% сопротивления осколкам"),
         PerkSpec("fast_bolt", "Быстрый затвор", "+20% скорость перезарядки"),
         PerkSpec("steady_aim", "Стальные нервы", "Меньше отдача при стрельбе"),
-        PerkSpec("eagle_eye", "Орлиный глаз", "Улучшенная дальность обнаружения"),
+        PerkSpec("eagle_eye", "Орлиный глаз", "Улучшенная точность прицеливания"),
         PerkSpec("field_medic", "Санитарная сумка", "Автовосстановление в укрытии"),
-        PerkSpec("bayonet_charge", "Боевой порыв", "+10% скорость рывка в атаку")
+        PerkSpec("bayonet_charge", "Штыковой бросок", "+10% скорость рывка в атаку")
     )
 
     val chapters: List<CampaignChapter> = listOf(
         CampaignChapter(
             index = 0,
-            id = "marne_1914",
-            titleRu = "ГЛАВА I: РУБЕЖ МАРНЫ",
-            dateAndFrontRu = "Сентябрь 1914 • Западный фронт",
-            theatre = TheatreBiome.MARNE_TRENCHES,
-            subtitleRu = "Первая линия обороны перед Парижем",
-            storyDispatchRu = "Артиллерия противника утюжит наши передовые траншеи с рассвета. Командование приказало удержать деревянные укрепления любой ценой и отбросить передовые цепи неприятеля за нейтральную полосу.",
-            objectiveTitleRu = "Отразить волны и захватить передовой пост",
+            id = "gallipoli_1915",
+            titleRu = "ГЛАВА I: ВЫСАДКА НА ГАЛЛИПОЛИ",
+            dateAndFrontRu = "Апрель 1915 • Британия против Османской империи",
+            theatre = TheatreBiome.GALLIPOLI_COAST,
+            subtitleRu = "Десант Королевских войск на мысе Геллес",
+            storyDispatchRu = "Британский транспортный пароход дымит на рейде за спиной. Скалистые высоты удерживают османские батальоны под красным полумесяцем. Пробейтесь через колючую проволоку и поднимите Юнион Джек над береговыми окопами!",
+            objectiveTitleRu = "Захватить османские позиции на берегу",
             targetKills = 12,
             sectorsToCapture = 2,
             recommendedClass = SoldierClass.RIFLEMAN
         ),
         CampaignChapter(
             index = 1,
-            id = "verdun_1916",
-            titleRu = "ГЛАВА II: ПЕКЛО ВЕРДЕНА",
-            dateAndFrontRu = "Февраль 1916 • Форт Дуомон",
-            theatre = TheatreBiome.VERDUN_CRATERS,
-            subtitleRu = "Переход через изрытую воронками землю",
-            storyDispatchRu = "Вокруг лишь грязь, колючая проволока и непрекращающийся грохот гаубиц. Пробейтесь через ничейную землю от воронки к воронке и подавите вражеский пулемётный расчёт у бетонного ДОТа.",
-            objectiveTitleRu = "Прорвать оборону и занять оба сектора",
-            targetKills = 16,
+            id = "basra_1916",
+            titleRu = "ГЛАВА II: ПРИГОРОД КУТ-ЭЛЬ-АМАРЫ",
+            dateAndFrontRu = "Март 1916 • Месопотамский фронт",
+            theatre = TheatreBiome.BASRA_OUTSKIRTS,
+            subtitleRu = "Глинобитные укрепления и пальмовые рощи",
+            storyDispatchRu = "Жара Месопотамии и плотный огонь османской пехоты сковали наступление вдоль берега Тигра. Займите передовые глинобитные постройки и проложите путь колонне снабжения.",
+            objectiveTitleRu = "Очистить окраину и занять оба сектора",
+            targetKills = 15,
             sectorsToCapture = 2,
-            recommendedClass = SoldierClass.ASSAULT
+            recommendedClass = SoldierClass.MG_GUNNER
         ),
         CampaignChapter(
             index = 2,
-            id = "gallipoli_1915",
-            titleRu = "ГЛАВА III: ВЫСАДКА НА ПОБЕРЕЖЬЕ",
-            dateAndFrontRu = "Апрель 1915 • Мыс Геллес",
-            theatre = TheatreBiome.COASTAL_LANDING,
-            subtitleRu = "Штурм скалистых береговых укреплений",
-            storyDispatchRu = "Десантный пароход дымит на рейде за спиной, а каменистый склон впереди перетянут рядами колючей проволоки. Поднимайтесь вверх от окопа к окопу, прикрывая товарищей точным огнём.",
-            objectiveTitleRu = "Захватить береговую батарею на высоте",
+            id = "gaza_city_1917",
+            titleRu = "ГЛАВА III: УЛИЧНЫЕ БОИ В ГАЗЕ",
+            dateAndFrontRu = "Ноябрь 1917 • Городской штурм",
+            theatre = TheatreBiome.GAZA_CITY,
+            subtitleRu = "Сражение за целый город: базар, улицы и башня",
+            storyDispatchRu = "Бой перешёл в густую городскую застройку! Османские стрелки укрылись на перекрёстках, за баррикадами из мешков и у старой рыночной площади. Продвигайтесь по улицам от квартала к кварталу и поднимите британские флаги над городом!",
+            objectiveTitleRu = "Занять рыночную площадь, центр и башню",
             targetKills = 18,
             sectorsToCapture = 3,
-            recommendedClass = SoldierClass.RIFLEMAN
+            recommendedClass = SoldierClass.ASSAULT
         ),
         CampaignChapter(
             index = 3,
-            id = "isonzo_1917",
-            titleRu = "ГЛАВА IV: ХРЕБЕТ ИЗОНЦО",
-            dateAndFrontRu = "Август 1917 • Альпийский фронт",
-            theatre = TheatreBiome.ALPINE_FORTRESS,
-            subtitleRu = "Решающий штурм каменной крепости",
-            storyDispatchRu = "Холодный горный ветер несёт эхо выстрелов вдоль отвесных скал. Враг засел за древними каменными стенами. Соберите всю волю в кулак — этот прорыв решит исход всей кампании!",
-            objectiveTitleRu = "Сокрушить штабную линию в горах",
+            id = "jerusalem_1918",
+            titleRu = "ГЛАВА IV: ЦИТАДЕЛЬ И ГОРОД МЕГИДДО",
+            dateAndFrontRu = "Сентябрь 1918 • Решающий прорыв",
+            theatre = TheatreBiome.JERUSALEM_CITADEL,
+            subtitleRu = "Финальный штурм каменного города-крепости",
+            storyDispatchRu = "Древние каменные кварталы, арочные галереи и главная площадь крепости стали последним оплотом османского штаба. Соберите весь отряд в единый кулак и завершите кампанию полной победой!",
+            objectiveTitleRu = "Захватить все 3 квартала и штабную цитадель",
             targetKills = 22,
             sectorsToCapture = 3,
             recommendedClass = SoldierClass.OFFICER

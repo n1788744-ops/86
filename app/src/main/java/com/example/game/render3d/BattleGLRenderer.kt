@@ -27,7 +27,7 @@ class BattleGLRenderer(
     var isMenuPreviewMode: Boolean = true
 
     @Volatile
-    var menuBiome: TheatreBiome = TheatreBiome.COASTAL_LANDING
+    var menuBiome: TheatreBiome = TheatreBiome.GAZA_CITY
 
     private val projMat = FloatArray(16)
     private val viewMat = FloatArray(16)
@@ -70,50 +70,47 @@ class BattleGLRenderer(
         if (scene == null || builtBiome != activeBiome) {
             scene?.terrainMesh?.release()
             scene?.oceanMesh?.release()
-            val sectorsCount = sim?.chapter?.sectorsToCapture ?: 2
+            val sectorsCount = sim?.chapter?.sectorsToCapture ?: 3
             scene = BattlefieldSceneBuilder.build(activeBiome, sectorsCount)
             builtBiome = activeBiome
         }
 
-        // Atmosphere & lighting per WW1 theatre
         val skyColor: FloatArray
         val sunDir: FloatArray
         val sunColor: FloatArray
         val fogDensity: Float
         when (activeBiome) {
-            TheatreBiome.MARNE_TRENCHES -> {
-                skyColor = floatArrayOf(0.46f, 0.49f, 0.50f)
-                sunDir = floatArrayOf(0.5f, 0.65f, 0.4f)
-                sunColor = floatArrayOf(0.95f, 0.88f, 0.74f)
-                fogDensity = 0.022f
-            }
-            TheatreBiome.VERDUN_CRATERS -> {
-                skyColor = floatArrayOf(0.36f, 0.34f, 0.33f)
-                sunDir = floatArrayOf(-0.4f, 0.55f, 0.35f)
-                sunColor = floatArrayOf(0.92f, 0.72f, 0.54f)
-                fogDensity = 0.026f
-            }
-            TheatreBiome.COASTAL_LANDING -> {
+            TheatreBiome.GALLIPOLI_COAST -> {
                 skyColor = floatArrayOf(0.62f, 0.67f, 0.74f)
                 sunDir = floatArrayOf(0.6f, 0.70f, 0.55f)
                 sunColor = floatArrayOf(1.02f, 0.98f, 0.90f)
                 fogDensity = 0.015f
             }
-            TheatreBiome.ALPINE_FORTRESS -> {
-                skyColor = floatArrayOf(0.55f, 0.61f, 0.68f)
-                sunDir = floatArrayOf(-0.55f, 0.75f, 0.35f)
-                sunColor = floatArrayOf(0.98f, 0.98f, 1.0f)
-                fogDensity = 0.018f
+            TheatreBiome.BASRA_OUTSKIRTS -> {
+                skyColor = floatArrayOf(0.72f, 0.65f, 0.54f)
+                sunDir = floatArrayOf(0.5f, 0.75f, 0.4f)
+                sunColor = floatArrayOf(1.06f, 0.96f, 0.78f)
+                fogDensity = 0.016f
+            }
+            TheatreBiome.GAZA_CITY -> {
+                skyColor = floatArrayOf(0.68f, 0.63f, 0.56f)
+                sunDir = floatArrayOf(0.45f, 0.78f, 0.35f)
+                sunColor = floatArrayOf(1.04f, 0.95f, 0.80f)
+                fogDensity = 0.013f
+            }
+            TheatreBiome.JERUSALEM_CITADEL -> {
+                skyColor = floatArrayOf(0.56f, 0.60f, 0.68f)
+                sunDir = floatArrayOf(-0.5f, 0.76f, 0.4f)
+                sunColor = floatArrayOf(1.0f, 0.94f, 0.84f)
+                fogDensity = 0.014f
             }
         }
 
         GLES30.glClearColor(skyColor[0], skyColor[1], skyColor[2], 1f)
         GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT or GLES30.GL_DEPTH_BUFFER_BIT)
 
-        // Step simulation
         sim?.step(dt, isMenuPreview = isMenuPreviewMode)
 
-        // Camera setup
         val aspect = surfaceWidth.toFloat() / surfaceHeight.toFloat()
         val fov = if (!isMenuPreviewMode && sim != null && sim.isAds) sim.weapon.adsFov else 64f
         Matrix.perspectiveM(projMat, 0, fov, aspect, 0.12f, 180f)
@@ -123,11 +120,11 @@ class BattleGLRenderer(
         if (isMenuPreviewMode || sim == null) {
             menuOrbitTime += dt * 0.16f
             camPos = Vec3(
-                x = sin(menuOrbitTime) * 15f,
-                y = 5.4f + cos(menuOrbitTime * 0.7f) * 1.1f,
-                z = 12f + cos(menuOrbitTime) * 9f
+                x = sin(menuOrbitTime) * 7.5f,
+                y = 6.2f + cos(menuOrbitTime * 0.7f) * 1.0f,
+                z = 12f + cos(menuOrbitTime) * 8f
             )
-            lookTarget = Vec3(0f, 1.0f, -8f)
+            lookTarget = Vec3(0f, 2.2f, -14f)
         } else {
             camPos = sim.eyePosition()
             val dir = Math3D.forwardFromYawPitch(sim.playerYaw, sim.playerPitch)
@@ -146,23 +143,21 @@ class BattleGLRenderer(
         GLES30.glUniform3f(shader.uSunDirLoc, sunDir[0], sunDir[1], sunDir[2])
         GLES30.glUniform3f(shader.uSunColorLoc, sunColor[0], sunColor[1], sunColor[2])
         GLES30.glUniform3f(shader.uAmbientTopLoc, skyColor[0] * 0.72f, skyColor[1] * 0.74f, skyColor[2] * 0.78f)
-        GLES30.glUniform3f(shader.uAmbientBottomLoc, 0.18f, 0.16f, 0.14f)
+        GLES30.glUniform3f(shader.uAmbientBottomLoc, 0.22f, 0.19f, 0.16f)
         GLES30.glUniform3f(shader.uCameraPosLoc, camPos.x, camPos.y, camPos.z)
         GLES30.glUniform3f(shader.uFogColorLoc, skyColor[0], skyColor[1], skyColor[2])
         GLES30.glUniform1f(shader.uFogDensityLoc, fogDensity)
 
         val built = scene!!
-        // 1. Terrain & Ocean
         drawMeshIdentity(built.terrainMesh)
         built.oceanMesh?.let { drawMeshIdentity(it) }
 
-        // 2. Offshore troopship (Chapter 3 Coastal Landing)
         built.shipPos?.let { sp ->
             val bobY = sin(menuOrbitTime * 2.5f + (sim?.elapsedTime ?: 0f) * 1.1f) * 0.22f
             drawTransformed(models.troopShip, sp.x, sp.y + bobY, sp.z, 18f, 1f)
         }
 
-        // 3. Trench walls, sandbags, barbed wire, ruins, supply crates
+        // City architecture, trenches, barricades, palms
         for (prop in built.props) {
             val mesh = when (prop.kind) {
                 PropKind.SANDBAG -> models.sandbagWall
@@ -170,33 +165,49 @@ class BattleGLRenderer(
                 PropKind.BARBED_WIRE -> models.barbedWire
                 PropKind.STONE_RUIN -> models.stoneRuin
                 PropKind.SUPPLY_CRATE -> models.supplyCrate
+                PropKind.CITY_HOUSE_LARGE -> models.cityHouseLarge
+                PropKind.CITY_HOUSE_BAZAAR -> models.cityHouseBazaar
+                PropKind.CITY_TOWER -> models.cityTower
+                PropKind.CITY_GATE -> models.cityGate
+                PropKind.MARKET_STALL -> models.marketStall
+                PropKind.PALM_TREE -> models.palmTree
             }
             drawTransformed(mesh, prop.x, prop.y, prop.z, prop.yawDeg, prop.scale)
         }
 
-        // 4. Sector Capture Flagpoles & Dynamic Banners
+        // Friendly Great Britain Union Jack home flag
+        val hf = built.britishHomeFlagPos
+        val windYaw = sin(menuOrbitTime * 3.2f + (sim?.elapsedTime ?: 0f) * 2.4f) * 8f
+        drawTransformed(models.flagPole, hf.x, hf.y, hf.z, 0f, 1f)
+        drawTransformed(models.britishFlagCloth, hf.x, hf.y, hf.z, windYaw, 1f)
+
+        // Sector Capture Flagpoles: Ottoman Empire flag -> British Union Jack upon capture!
         val sectorList = sim?.sectors
         for (idx in built.sectors.indices) {
             val spot = built.sectors[idx]
             val fy = Math3D.terrainHeightAt(spot.x, spot.z, activeBiome)
             drawTransformed(models.flagPole, spot.x, fy, spot.z, 0f, 1f)
             val captured = sectorList?.getOrNull(idx)?.isCaptured ?: false
-            val progress = sectorList?.getOrNull(idx)?.captureProgress ?: 0f
-            val r = if (captured) 0.28f else 0.78f - progress * 0.4f
-            val g = if (captured) 0.56f else 0.24f + progress * 0.2f
-            val b = if (captured) 0.85f else 0.22f + progress * 0.4f
-            drawTransformed(models.flagCloth, spot.x, fy, spot.z, (menuOrbitTime * 25f) % 20f - 10f, 1f, r, g, b)
+            val flagMesh = if (captured) models.britishFlagCloth else models.ottomanFlagCloth
+            drawTransformed(flagMesh, spot.x, fy, spot.z, windYaw + idx * 5f, 1f)
         }
 
-        // 5. Allied & Enemy 3D Articulated Soldiers
         if (sim != null) {
-            val ententeHex = sim.uniform.coatColorHex
-            val ententeRgb = floatArrayOf(
-                ((ententeHex shr 16) and 0xFF) / 255f,
-                ((ententeHex shr 8) and 0xFF) / 255f,
-                (ententeHex and 0xFF) / 255f
+            // Ground blood decals
+            if (sim.bloodEffectsEnabled) {
+                for (decal in sim.bloodDecals) {
+                    drawTransformed(models.bloodDecal, decal.x, decal.y, decal.z, decal.yawDeg, decal.scale)
+                }
+            }
+
+            // British & Ottoman 3D Soldiers
+            val britHex = sim.uniform.coatColorHex
+            val britRgb = floatArrayOf(
+                ((britHex shr 16) and 0xFF) / 255f,
+                ((britHex shr 8) and 0xFF) / 255f,
+                (britHex and 0xFF) / 255f
             )
-            val enemyRgb = floatArrayOf(0.42f, 0.44f, 0.37f) // Field-grey greatcoats
+            val ottomanRgb = floatArrayOf(0.46f, 0.44f, 0.34f) // Ottoman khaki-olive wool uniform
 
             for (s in sim.soldiers) {
                 Soldier3DDrawer.drawSoldier(
@@ -212,16 +223,14 @@ class BattleGLRenderer(
                     isCrouching = s.isCrouching,
                     isDead = s.isDead,
                     deathProgress = s.deathTimer,
-                    isEntente = s.isEntente,
-                    coatRgb = if (s.isEntente) ententeRgb else enemyRgb
+                    isBritish = s.isBritish,
+                    coatRgb = if (s.isBritish) britRgb else ottomanRgb
                 )
                 if (s.muzzleFlashTimer > 0f) {
-                    val fRad = 0.24f
-                    drawTransformed(models.unitSphere, s.x, s.y + 1.25f, s.z, 0f, fRad, 1f, 0.8f, 0.3f)
+                    drawTransformed(models.unitSphere, s.x, s.y + 1.25f, s.z, 0f, 0.24f, 1f, 0.8f, 0.3f)
                 }
             }
 
-            // 6. Bullet Tracers & Explosion / Smoke Particles
             for (tr in sim.tracers) {
                 drawTransformed(models.tracerBeam, tr.x, tr.y, tr.z, 0f, 0.7f, 1f, if (tr.isEnemy) 0.45f else 0.90f, 0.25f)
             }
@@ -230,13 +239,11 @@ class BattleGLRenderer(
                 drawTransformed(models.unitSphere, pt.x, pt.y, pt.z, 0f, pt.size, pt.r, pt.g, pt.b, alpha)
             }
 
-            // 7. First-Person 3D Weapon + Hands (skip if scoped sniper zoom overlay is active)
             val isScoped = sim.isAds && sim.weapon.type == WeaponType.SCOPED_RIFLE
             if (!isMenuPreviewMode && !isScoped) {
                 drawFirstPersonWeapon(sim)
             }
 
-            // Emit HUD snapshot smoothly every 2 frames (~30Hz)
             hudEmitCounter++
             if (hudEmitCounter >= 2) {
                 hudEmitCounter = 0
@@ -247,7 +254,6 @@ class BattleGLRenderer(
 
     private fun drawFirstPersonWeapon(sim: BattleSimulation) {
         GLES30.glClear(GLES30.GL_DEPTH_BUFFER_BIT)
-        // View-space rendering (camera at origin looking down -Z)
         GLES30.glUniform3f(shader.uCameraPosLoc, 0f, 0f, 0f)
         GLES30.glUniform1f(shader.uFogDensityLoc, 0.0f)
 
@@ -272,19 +278,19 @@ class BattleGLRenderer(
             WeaponType.LIGHT_MG -> models.lmgBody
             WeaponType.SCOPED_RIFLE -> models.sniperRifleBody
             WeaponType.OFFICER_REVOLVER -> models.revolverBody
+            WeaponType.TRENCH_SHOTGUN -> models.trenchShotgunBody
+            WeaponType.MAUSER_PISTOL -> models.mauserC96Body
+            WeaponType.STRIP_LMG -> models.stripLmgBody
         }
 
-        // Draw primary weapon body
         Matrix.multiplyMM(mvpMat, 0, projMat, 0, weaponMat, 0)
         GLES30.glUniformMatrix4fv(shader.uModelLoc, 1, false, weaponMat, 0)
         GLES30.glUniformMatrix4fv(shader.uMvpLoc, 1, false, mvpMat, 0)
         GLES30.glUniform4f(shader.uTintColorLoc, 1f, 1f, 1f, 1f)
         wMesh.draw()
 
-        // Draw first-person hands gripping the weapon
         models.fpArms.draw()
 
-        // Draw animated bolt handle for bolt-action rifles (slides back & lifts up!)
         if (sim.weapon.type == WeaponType.BOLT_RIFLE || sim.weapon.type == WeaponType.SCOPED_RIFLE) {
             val boltT = (sim.boltAnimTimer / 0.52f).coerceIn(0f, 1f)
             val cyclePhase = sin(boltT * Math.PI.toFloat())
@@ -300,7 +306,6 @@ class BattleGLRenderer(
             models.boltHandle.draw()
         }
 
-        // Muzzle flash glow at barrel tip
         if (sim.muzzleFlashTimer > 0f) {
             val flashMat = FloatArray(16)
             Matrix.setIdentityM(flashMat, 0)

@@ -14,6 +14,7 @@ import com.example.game.engine.HudSnapshot
 import com.example.game.model.CampaignChapter
 import com.example.game.model.GameCatalog
 import com.example.game.model.GameScreen
+import com.example.game.model.ShopConsumable
 import com.example.game.model.SoldierClass
 import com.example.game.model.UniformStyle
 import com.example.game.model.WeaponSpec
@@ -51,6 +52,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val _activeSimulation = MutableStateFlow<BattleSimulation?>(null)
     val activeSimulation: StateFlow<BattleSimulation?> = _activeSimulation.asStateFlow()
 
+    private val _shopNotice = MutableStateFlow<String?>(null)
+    val shopNotice: StateFlow<String?> = _shopNotice.asStateFlow()
+
     private var rewardRecordedForCurrentBattle = false
 
     init {
@@ -63,6 +67,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     sim.lookSensitivity = state.lookSensitivity
                     sim.aimAssistEnabled = state.aimAssistEnabled
                     sim.invertY = state.invertY
+                    sim.bloodEffectsEnabled = state.bloodEffectsEnabled
                 }
             }
         }
@@ -81,6 +86,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun navigateTo(screen: GameScreen) {
         audio.playSfx(SfxType.UI_CLICK)
+        _shopNotice.value = null
         _currentScreen.value = screen
         audio.musicMode = when (screen) {
             GameScreen.BATTLE -> MusicMode.COMBAT
@@ -110,12 +116,66 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         sfxVolume: Float,
         lookSensitivity: Float,
         aimAssist: Boolean,
-        invertY: Boolean
+        invertY: Boolean,
+        bloodEffects: Boolean
     ) {
         audio.musicVolume = musicVolume
         audio.sfxVolume = sfxVolume
         viewModelScope.launch {
-            repo.updateSettings(musicVolume, sfxVolume, lookSensitivity, aimAssist, invertY)
+            repo.updateSettings(musicVolume, sfxVolume, lookSensitivity, aimAssist, invertY, bloodEffects)
+        }
+    }
+
+    fun buyWeapon(weapon: WeaponSpec) {
+        viewModelScope.launch {
+            val ok = repo.purchaseUnlockable(weapon.id, weapon.priceStars)
+            if (ok) {
+                audio.playSfx(SfxType.RELOAD)
+                _shopNotice.value = "Куплено: ${weapon.nameRu}"
+            } else {
+                audio.playSfx(SfxType.UI_CLICK)
+                _shopNotice.value = "Недостаточно звёзд ★"
+            }
+        }
+    }
+
+    fun equipWeaponFromShop(weapon: WeaponSpec) {
+        audio.playSfx(SfxType.UI_CLICK)
+        val prof = profile.value
+        val matchingClass = SoldierClass.entries.find {
+            it.defaultWeaponId == weapon.id || it.altWeaponId == weapon.id
+        } ?: SoldierClass.entries.find { it.id == prof.selectedClassId } ?: SoldierClass.RIFLEMAN
+        viewModelScope.launch {
+            repo.saveLoadout(matchingClass.id, weapon.id, prof.selectedUniformId, prof.selectedPerkId)
+            _shopNotice.value = "Экипировано: ${weapon.nameRu} (${matchingClass.titleRu})"
+        }
+    }
+
+    fun buyUniform(uniform: UniformStyle) {
+        viewModelScope.launch {
+            val ok = repo.purchaseUnlockable(uniform.id, uniform.priceStars)
+            if (ok) {
+                audio.playSfx(SfxType.RELOAD)
+                val prof = profile.value
+                repo.saveLoadout(prof.selectedClassId, prof.selectedWeaponId, uniform.id, prof.selectedPerkId)
+                _shopNotice.value = "Куплено и надето: ${uniform.titleRu}"
+            } else {
+                audio.playSfx(SfxType.UI_CLICK)
+                _shopNotice.value = "Недостаточно звёзд ★"
+            }
+        }
+    }
+
+    fun buyConsumable(item: ShopConsumable) {
+        viewModelScope.launch {
+            val ok = repo.purchaseConsumable(item)
+            if (ok) {
+                audio.playSfx(SfxType.RELOAD)
+                _shopNotice.value = "Добавлено в снаряжение: ${item.titleRu}"
+            } else {
+                audio.playSfx(SfxType.UI_CLICK)
+                _shopNotice.value = "Недостаточно звёзд ★"
+            }
         }
     }
 
@@ -125,28 +185,43 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val prof = profile.value
         val sClass = SoldierClass.entries.find { it.id == prof.selectedClassId } ?: SoldierClass.RIFLEMAN
         val weapon = GameCatalog.weapons[prof.selectedWeaponId]
+            ?.takeIf { prof.unlockedItemIds.contains(it.id) }
             ?: GameCatalog.weapons[sClass.defaultWeaponId]!!
-        val uniform = UniformStyle.entries.find { it.id == prof.selectedUniformId } ?: sClass.defaultUniform
+        val uniform = UniformStyle.entries.find { it.id == prof.selectedUniformId }
+            ?.takeIf { prof.unlockedItemIds.contains(it.id) }
+            ?: sClass.defaultUniform
 
-        val sim = BattleSimulation(
-            chapter = chapter,
-            soldierClass = sClass,
-            weapon = weapon,
-            uniform = uniform,
-            perkId = prof.selectedPerkId,
-            audio = audio
-        ).apply {
-            lookSensitivity = prof.lookSensitivity
-            aimAssistEnabled = prof.aimAssistEnabled
-            invertY = prof.invertY
+        viewModelScope.launch {
+            val (usedArmor, usedOrdnance) = repo.consumePreBattleBuffs()
+            val sim = BattleSimulation(
+                chapter = chapter,
+                soldierClass = sClass,
+                weapon = weapon,
+                uniform = uniform,
+                perkId = prof.selectedPerkId,
+                initialMedkits = prof.medkitCount,
+                armorBonusHp = if (usedArmor) 40 else 0,
+                extraOrdnance = usedOrdnance,
+                bloodEffectsEnabled = prof.bloodEffectsEnabled,
+                onMedkitConsumed = { remaining ->
+                    viewModelScope.launch {
+                        repo.setMedkitCount(remaining)
+                    }
+                },
+                audio = audio
+            ).apply {
+                lookSensitivity = prof.lookSensitivity
+                aimAssistEnabled = prof.aimAssistEnabled
+                invertY = prof.invertY
+            }
+
+            rewardRecordedForCurrentBattle = false
+            _isPaused.value = false
+            _activeSimulation.value = sim
+            _hudSnapshot.value = sim.snapshot()
+            _currentScreen.value = GameScreen.BATTLE
+            audio.musicMode = MusicMode.COMBAT
         }
-
-        rewardRecordedForCurrentBattle = false
-        _isPaused.value = false
-        _activeSimulation.value = sim
-        _hudSnapshot.value = sim.snapshot()
-        _currentScreen.value = GameScreen.BATTLE
-        audio.musicMode = MusicMode.COMBAT
     }
 
     fun togglePause() {

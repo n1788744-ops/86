@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Replay
@@ -64,6 +65,8 @@ import androidx.compose.ui.unit.dp
 import com.example.game.engine.BattleOutcome
 import com.example.game.engine.BattleSimulation
 import com.example.game.engine.HudSnapshot
+import com.example.game.model.Faction
+import com.example.ui.components.FactionFlagBadge
 import com.example.ui.components.Ww1CommandButton
 import com.example.ui.theme.AshGrey
 import com.example.ui.theme.BrassGold
@@ -91,28 +94,30 @@ fun BattleHudOverlay(
     BackHandler(onBack = onTogglePause)
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // 1. Damage flash radial vignette
-        if (hud.damageFlashAlpha > 0.01f) {
+        // 1. Crimson Blood Screen Splatter & Damage Vignette
+        if (hud.bloodSplatterAlpha > 0.01f) {
+            BloodSplatterScreenOverlay(
+                alpha = hud.bloodSplatterAlpha,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else if (hud.damageFlashAlpha > 0.01f) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.radialGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                CrimsonAlert.copy(alpha = hud.damageFlashAlpha * 0.55f)
-                            )
+                            colors = listOf(Color.Transparent, CrimsonAlert.copy(alpha = hud.damageFlashAlpha * 0.55f))
                         )
                     )
             )
         }
 
-        // 2. Sniper 3.5x Scope Optic Overlay when scoped
+        // 2. Sniper 3.5x Scope Optic Overlay
         if (hud.isScoped && !isPaused && hud.outcome == BattleOutcome.PLAYING) {
             SniperScopeOverlay(modifier = Modifier.fillMaxSize())
         }
 
-        // 3. Fullscreen Touch-Look Aim Surface (captures drags across center/right view)
+        // 3. Fullscreen Touch-Look Aim Surface
         if (!isPaused && hud.outcome == BattleOutcome.PLAYING) {
             Box(
                 modifier = Modifier
@@ -152,7 +157,6 @@ fun BattleHudOverlay(
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(10.dp)
         ) {
-            // Top Tactical Bar
             Column(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -163,31 +167,33 @@ fun BattleHudOverlay(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Top
                 ) {
-                    // Objective & Kills Badge
                     Surface(
-                        color = TrenchBlack.copy(alpha = 0.72f),
-                        border = BorderStroke(1.dp, BrassMuted.copy(alpha = 0.5f)),
+                        color = TrenchBlack.copy(alpha = 0.75f),
+                        border = BorderStroke(1.dp, BrassMuted.copy(alpha = 0.55f)),
                         shape = RoundedCornerShape(4.dp),
                         modifier = Modifier.weight(1f, fill = false)
                     ) {
-                        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
-                            Text(
-                                text = hud.chapterTitle,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = BrassGold
-                            )
-                            Text(
-                                text = hud.objectiveText,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = ParchmentIvory,
-                                fontWeight = FontWeight.Bold
-                            )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FactionFlagBadge(Faction.GREAT_BRITAIN, Modifier.width(24.dp).height(16.dp))
+                            Column {
+                                Text(hud.chapterTitle, style = MaterialTheme.typography.labelSmall, color = BrassGold)
+                                Text(
+                                    text = hud.objectiveText,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = ParchmentIvory,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            FactionFlagBadge(Faction.OTTOMAN_EMPIRE, Modifier.width(24.dp).height(16.dp))
                         }
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // Pause button (48dp+)
                     Box(
                         modifier = Modifier
                             .size(48.dp)
@@ -198,34 +204,38 @@ fun BattleHudOverlay(
                             .clickable(onClick = onTogglePause),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Pause,
-                            contentDescription = "Пауза",
-                            tint = ParchmentIvory
-                        )
+                        Icon(Icons.Filled.Pause, contentDescription = "Пауза", tint = ParchmentIvory)
                     }
                 }
 
-                // Active Sector Capture Bar
                 if (hud.activeSectorName != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Surface(
-                        color = TrenchBlack.copy(alpha = 0.78f),
-                        border = BorderStroke(1.dp, HorizonBlue),
+                        color = TrenchBlack.copy(alpha = 0.80f),
+                        border = BorderStroke(1.dp, BrassGold),
                         shape = RoundedCornerShape(4.dp),
                         modifier = Modifier
                             .align(Alignment.CenterHorizontally)
-                            .widthIn(max = 260.dp)
+                            .widthIn(max = 280.dp)
                     ) {
                         Column(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text(
-                                text = "ЗАХВАТ: ${hud.activeSectorName} (${(hud.activeSectorProgress * 100).toInt()}%)",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = HorizonBlue
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                FactionFlagBadge(
+                                    faction = if (hud.activeSectorIsBritish) Faction.GREAT_BRITAIN else Faction.OTTOMAN_EMPIRE,
+                                    modifier = Modifier.width(20.dp).height(13.dp)
+                                )
+                                Text(
+                                    text = "ЗАХВАТ: ${hud.activeSectorName} (${(hud.activeSectorProgress * 100).toInt()}%)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = BrassGold
+                                )
+                            }
                             Spacer(modifier = Modifier.height(4.dp))
                             LinearProgressIndicator(
                                 progress = { hud.activeSectorProgress },
@@ -240,7 +250,6 @@ fun BattleHudOverlay(
                     }
                 }
 
-                // Battle Feed Dispatch Banner
                 if (hud.battleFeedText.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
@@ -256,9 +265,7 @@ fun BattleHudOverlay(
                 }
             }
 
-            // Bottom Mobile Controls + Vitals Bar
             if (!isPaused && hud.outcome == BattleOutcome.PLAYING) {
-                // Left Virtual Joystick
                 VirtualJoystick(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
@@ -269,48 +276,62 @@ fun BattleHudOverlay(
                     }
                 )
 
-                // Bottom-Center Vitals & Ammo Strip
-                Surface(
-                    color = TrenchBlack.copy(alpha = 0.76f),
-                    border = BorderStroke(1.dp, SlateBorder),
-                    shape = RoundedCornerShape(4.dp),
+                // Bottom-Center Vitals, Medkit Quick-Use & Ammo Strip
+                Row(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 4.dp)
+                        .padding(bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Filled.Favorite,
-                                contentDescription = "Здоровье",
-                                tint = if (hud.health > 35) TacticalGreen else CrimsonAlert,
-                                modifier = Modifier.size(16.dp)
-                            )
+                    if (hud.medkitsRemaining > 0) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .height(48.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(TacticalGreen.copy(alpha = 0.85f))
+                                .border(1.dp, BrassGold, RoundedCornerShape(4.dp))
+                                .clickable { simulation.useMedkit() }
+                                .padding(horizontal = 10.dp)
+                        ) {
+                            Icon(Icons.Filled.LocalHospital, contentDescription = "Бинт", tint = ParchmentIvory, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(4.dp))
+                            Text("x${hud.medkitsRemaining}", style = MaterialTheme.typography.labelLarge, color = ParchmentIvory)
+                        }
+                    }
+
+                    Surface(
+                        color = TrenchBlack.copy(alpha = 0.76f),
+                        border = BorderStroke(1.dp, SlateBorder),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Filled.Favorite,
+                                    contentDescription = "Здоровье",
+                                    tint = if (hud.health > 35) TacticalGreen else CrimsonAlert,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("${hud.health}", style = MaterialTheme.typography.titleMedium, color = ParchmentIvory, fontWeight = FontWeight.Bold)
+                            }
+                            Text("|", color = SlateBorder)
                             Text(
-                                text = "${hud.health}",
+                                text = if (hud.isReloading) "ПЕРЕЗАРЯДКА..." else "${hud.ammoInMag} / ${hud.reserveAmmo}",
                                 style = MaterialTheme.typography.titleMedium,
-                                color = ParchmentIvory,
+                                color = if (hud.ammoInMag <= 2) BrassGold else ParchmentIvory,
                                 fontWeight = FontWeight.Bold
                             )
                         }
-
-                        Text(text = "|", color = SlateBorder)
-
-                        Text(
-                            text = if (hud.isReloading) "ПЕРЕЗАРЯДКА..." else "${hud.ammoInMag} / ${hud.reserveAmmo}",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = if (hud.ammoInMag <= 2) BrassGold else ParchmentIvory,
-                            fontWeight = FontWeight.Bold
-                        )
                     }
                 }
 
-                // Right Thumb Combat Cluster (Fire, ADS, Reload, Crouch, Special)
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
@@ -357,7 +378,6 @@ fun BattleHudOverlay(
                             onClick = { simulation.isAds = !simulation.isAds }
                         )
 
-                        // Primary FIRE button (supports tap + hold for automatics)
                         FireTriggerButton(
                             onFirePress = {
                                 simulation.isFiringHeld = true
@@ -372,7 +392,6 @@ fun BattleHudOverlay(
             }
         }
 
-        // 6. Pause / Victory / Defeat Dispatch Modal
         if (isPaused || hud.outcome != BattleOutcome.PLAYING) {
             BattleModalOverlay(
                 hud = hud,
@@ -387,12 +406,54 @@ fun BattleHudOverlay(
 }
 
 @Composable
+private fun BloodSplatterScreenOverlay(alpha: Float, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val a = alpha.coerceIn(0f, 1f)
+
+        // Radial deep crimson border
+        drawRect(
+            brush = Brush.radialGradient(
+                colors = listOf(Color.Transparent, Color(0xFF7A0408).copy(alpha = a * 0.62f))
+            ),
+            size = size
+        )
+
+        // Procedural organic crimson blood droplets around screen perimeter
+        val spots = listOf(
+            Triple(0.08f, 0.14f, 44f),
+            Triple(0.14f, 0.19f, 22f),
+            Triple(0.88f, 0.12f, 52f),
+            Triple(0.83f, 0.20f, 24f),
+            Triple(0.11f, 0.78f, 48f),
+            Triple(0.18f, 0.85f, 26f),
+            Triple(0.91f, 0.80f, 56f),
+            Triple(0.84f, 0.74f, 20f),
+            Triple(0.48f, 0.06f, 32f),
+            Triple(0.54f, 0.93f, 36f)
+        )
+        for ((rx, ry, rad) in spots) {
+            drawCircle(
+                color = Color(0xFF8C080C).copy(alpha = a * 0.55f),
+                radius = rad,
+                center = Offset(w * rx, h * ry)
+            )
+            drawCircle(
+                color = Color(0xFFB80E14).copy(alpha = a * 0.35f),
+                radius = rad * 0.55f,
+                center = Offset(w * rx + rad * 0.25f, h * ry + rad * 0.22f)
+            )
+        }
+    }
+}
+
+@Composable
 private fun VirtualJoystick(
     onMove: (Float, Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var knobOffset by remember { mutableStateOf(Offset.Zero) }
-    val outerRadiusPx = 120f
 
     Box(
         modifier = modifier
@@ -430,32 +491,11 @@ private fun VirtualJoystick(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val c = Offset(size.width / 2f, size.height / 2f)
             val r = size.minDimension * 0.45f
-            drawCircle(
-                color = TrenchBlack.copy(alpha = 0.55f),
-                radius = r,
-                center = c
-            )
-            drawCircle(
-                color = BrassMuted.copy(alpha = 0.65f),
-                radius = r,
-                center = c,
-                style = Stroke(width = 3f)
-            )
-            // Thumb knob
-            drawCircle(
-                color = BrassGold.copy(alpha = 0.88f),
-                radius = r * 0.44f,
-                center = c + knobOffset
-            )
-            drawCircle(
-                color = TrenchBlack.copy(alpha = 0.5f),
-                radius = r * 0.44f,
-                center = c + knobOffset,
-                style = Stroke(width = 2.5f)
-            )
+            drawCircle(color = TrenchBlack.copy(alpha = 0.55f), radius = r, center = c)
+            drawCircle(color = BrassMuted.copy(alpha = 0.65f), radius = r, center = c, style = Stroke(width = 3f))
+            drawCircle(color = BrassGold.copy(alpha = 0.88f), radius = r * 0.44f, center = c + knobOffset)
+            drawCircle(color = TrenchBlack.copy(alpha = 0.5f), radius = r * 0.44f, center = c + knobOffset, style = Stroke(width = 2.5f))
         }
-        // Keep compiler happy with reference
-        if (outerRadiusPx < 0f) Unit
     }
 }
 
@@ -469,9 +509,7 @@ private fun FireTriggerButton(
         modifier = Modifier
             .size(72.dp)
             .clip(CircleShape)
-            .background(
-                if (pressed) BrassGold else CrimsonAlert.copy(alpha = 0.88f)
-            )
+            .background(if (pressed) BrassGold else CrimsonAlert.copy(alpha = 0.88f))
             .border(2.dp, BrassGold, CircleShape)
             .testTag("battle_fire_button")
             .pointerInput(Unit) {
@@ -513,17 +551,12 @@ private fun TacticalCircleButton(
         modifier = Modifier
             .size(size)
             .clip(CircleShape)
-            .background(
-                if (isActive) BrassGold.copy(alpha = 0.30f) else TrenchBlack.copy(alpha = 0.72f)
-            )
+            .background(if (isActive) BrassGold.copy(alpha = 0.30f) else TrenchBlack.copy(alpha = 0.72f))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            drawCircle(
-                color = SlateBorder,
-                style = Stroke(width = 3f)
-            )
+            drawCircle(color = SlateBorder, style = Stroke(width = 3f))
             drawArc(
                 color = if (isActive) BrassGold else HorizonBlue,
                 startAngle = -90f,
@@ -533,18 +566,8 @@ private fun TacticalCircleButton(
             )
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = if (isActive) BrassGold else ParchmentIvory,
-                modifier = Modifier.size(18.dp)
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = ParchmentIvory,
-                maxLines = 1
-            )
+            Icon(icon, contentDescription = label, tint = if (isActive) BrassGold else ParchmentIvory, modifier = Modifier.size(18.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall, color = ParchmentIvory, maxLines = 1)
         }
     }
 }
@@ -584,23 +607,10 @@ private fun SniperScopeOverlay(modifier: Modifier = Modifier) {
         val cx = size.width / 2f
         val cy = size.height / 2f
         val r = size.minDimension * 0.36f
-        // Darkened peripheral mask via thick outer stroke
-        drawCircle(
-            color = TrenchBlack.copy(alpha = 0.94f),
-            radius = r * 2.2f,
-            center = Offset(cx, cy),
-            style = Stroke(width = r * 2.4f)
-        )
-        drawCircle(
-            color = BrassMuted,
-            radius = r,
-            center = Offset(cx, cy),
-            style = Stroke(width = 6f)
-        )
-        // Crosshair lines inside optic
+        drawCircle(color = TrenchBlack.copy(alpha = 0.94f), radius = r * 2.2f, center = Offset(cx, cy), style = Stroke(width = r * 2.4f))
+        drawCircle(color = BrassMuted, radius = r, center = Offset(cx, cy), style = Stroke(width = 6f))
         drawLine(Color.Black.copy(alpha = 0.85f), Offset(cx - r, cy), Offset(cx + r, cy), strokeWidth = 2.2f)
         drawLine(Color.Black.copy(alpha = 0.85f), Offset(cx, cy - r), Offset(cx, cy + r), strokeWidth = 2.2f)
-        // Center post tip
         drawLine(Color.Black, Offset(cx, cy), Offset(cx, cy + r), strokeWidth = 5f)
     }
 }
@@ -620,8 +630,8 @@ private fun BattleModalOverlay(
         BattleOutcome.PLAYING -> "ПАУЗА"
     }
     val subtitle = when (hud.outcome) {
-        BattleOutcome.VICTORY -> "Секторы захвачены (${hud.sectorsCaptured}/${hud.totalSectors}). Нейтрализовано врагов: ${hud.kills}."
-        BattleOutcome.DEFEAT -> "Боец пал под огнём неприятеля. Перегруппируйтесь и повторите штурм."
+        BattleOutcome.VICTORY -> "Секторы захвачены (${hud.sectorsCaptured}/${hud.totalSectors}). Повержено врагов: ${hud.kills}."
+        BattleOutcome.DEFEAT -> "Боец пал под огнём османов. Перегруппируйтесь и повторите штурм."
         BattleOutcome.PLAYING -> "${hud.chapterTitle} • ${hud.objectiveText}"
     }
 
@@ -649,24 +659,12 @@ private fun BattleModalOverlay(
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = ParchmentIvory,
-                    textAlign = TextAlign.Center
-                )
+                Text(subtitle, style = MaterialTheme.typography.bodyLarge, color = ParchmentIvory, textAlign = TextAlign.Center)
 
                 if (hud.outcome != BattleOutcome.PLAYING) {
                     Spacer(modifier = Modifier.height(14.dp))
-                    Surface(
-                        color = SlatePanel,
-                        shape = RoundedCornerShape(4.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
+                    Surface(color = SlatePanel, shape = RoundedCornerShape(4.dp), modifier = Modifier.fillMaxWidth()) {
+                        Row(modifier = Modifier.padding(12.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("ОПЫТ", style = MaterialTheme.typography.labelSmall, color = AshGrey)
                                 Text("+${hud.earnedXp} XP", style = MaterialTheme.typography.titleLarge, color = BrassGold)
@@ -686,38 +684,15 @@ private fun BattleModalOverlay(
                 Spacer(modifier = Modifier.height(18.dp))
 
                 if (isPaused && hud.outcome == BattleOutcome.PLAYING) {
-                    Ww1CommandButton(
-                        text = "ПРОДОЛЖИТЬ БОЙ",
-                        isPrimary = true,
-                        onClick = onResume,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Ww1CommandButton("ПРОДОЛЖИТЬ БОЙ", isPrimary = true, onClick = onResume, modifier = Modifier.fillMaxWidth())
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                Ww1CommandButton(
-                    text = "СМЕНИТЬ КЛАСС",
-                    icon = Icons.Filled.Shield,
-                    onClick = onSwitchClass,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Ww1CommandButton("СМЕНИТЬ КЛАСС", icon = Icons.Filled.Shield, onClick = onSwitchClass, modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(8.dp))
-
-                Ww1CommandButton(
-                    text = "НАЧАТЬ ЗАНОВО",
-                    icon = Icons.Filled.Replay,
-                    isPrimary = hud.outcome != BattleOutcome.PLAYING,
-                    onClick = onRestart,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Ww1CommandButton("НАЧАТЬ ЗАНОВО", icon = Icons.Filled.Replay, isPrimary = hud.outcome != BattleOutcome.PLAYING, onClick = onRestart, modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(8.dp))
-
-                Ww1CommandButton(
-                    text = "ВЫЙТИ В ШТАБ",
-                    icon = Icons.Filled.Close,
-                    onClick = onExitToMenu,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Ww1CommandButton("ВЫЙТИ В ШТАБ", icon = Icons.Filled.Close, onClick = onExitToMenu, modifier = Modifier.fillMaxWidth())
             }
         }
     }

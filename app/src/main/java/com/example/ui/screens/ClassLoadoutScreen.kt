@@ -34,10 +34,12 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.LocalHospital
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MilitaryTech
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -90,6 +92,7 @@ fun ClassLoadoutScreen(
     profile: PlayerProfileState,
     onSaveLoadout: (SoldierClass, WeaponSpec, UniformStyle, String) -> Unit,
     onDeployBattle: (SoldierClass, WeaponSpec, UniformStyle, String) -> Unit,
+    onOpenShop: () -> Unit,
     onBack: () -> Unit
 ) {
     BackHandler(onBack = onBack)
@@ -100,17 +103,23 @@ fun ClassLoadoutScreen(
     var selectedWeapon by remember(profile.selectedWeaponId, selectedClass) {
         mutableStateOf(
             GameCatalog.weapons[profile.selectedWeaponId]
-                ?.takeIf { it.id == selectedClass.defaultWeaponId || it.id == selectedClass.altWeaponId }
+                ?.takeIf {
+                    profile.unlockedItemIds.contains(it.id) &&
+                        (it.id == selectedClass.defaultWeaponId || it.id == selectedClass.altWeaponId)
+                }
                 ?: GameCatalog.weapons[selectedClass.defaultWeaponId]!!
         )
     }
     var selectedUniform by remember(profile.selectedUniformId) {
-        mutableStateOf(UniformStyle.entries.find { it.id == profile.selectedUniformId } ?: selectedClass.defaultUniform)
+        mutableStateOf(
+            UniformStyle.entries.find { it.id == profile.selectedUniformId && profile.unlockedItemIds.contains(it.id) }
+                ?: UniformStyle.BRITISH_KHAKI
+        )
     }
     var selectedPerkId by remember(profile.selectedPerkId) {
         mutableStateOf(profile.selectedPerkId)
     }
-    var rightTab by remember { mutableIntStateOf(0) } // 0 = СНАРЯГА, 1 = ФОРМА
+    var rightTab by remember { mutableIntStateOf(0) }
     var userYawOffset by remember { mutableFloatStateOf(0f) }
 
     val showcaseRenderer = remember { ClassShowcaseRenderer() }
@@ -131,7 +140,6 @@ fun ClassLoadoutScreen(
             val isWide = maxWidth >= 680.dp
 
             if (isWide) {
-                // Classic 3-column tactical loadout layout matching Screenshot #1
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
@@ -150,7 +158,9 @@ fun ClassLoadoutScreen(
                             onSelectClass = { sc ->
                                 selectedClass = sc
                                 selectedWeapon = GameCatalog.weapons[sc.defaultWeaponId]!!
-                                selectedUniform = sc.defaultUniform
+                                if (profile.unlockedItemIds.contains(sc.defaultUniform.id)) {
+                                    selectedUniform = sc.defaultUniform
+                                }
                                 onSaveLoadout(sc, selectedWeapon, selectedUniform, selectedPerkId)
                             }
                         )
@@ -163,11 +173,7 @@ fun ClassLoadoutScreen(
                         )
                     }
 
-                    Box(
-                        modifier = Modifier
-                            .weight(0.36f)
-                            .fillMaxHeight()
-                    ) {
+                    Box(modifier = Modifier.weight(0.36f).fillMaxHeight()) {
                         Soldier3DTurntableCard(
                             renderer = showcaseRenderer,
                             selectedClass = selectedClass,
@@ -183,6 +189,7 @@ fun ClassLoadoutScreen(
                             .verticalScroll(rememberScrollState())
                     ) {
                         EquipmentAndUniformPanel(
+                            profile = profile,
                             selectedClass = selectedClass,
                             selectedWeapon = selectedWeapon,
                             selectedUniform = selectedUniform,
@@ -195,12 +202,12 @@ fun ClassLoadoutScreen(
                             onSelectUniform = { u ->
                                 selectedUniform = u
                                 onSaveLoadout(selectedClass, selectedWeapon, u, selectedPerkId)
-                            }
+                            },
+                            onOpenShop = onOpenShop
                         )
                     }
                 }
             } else {
-                // Portrait-optimized layout: Interactive 3D Soldier Showcase on top, tabbed panels below
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -222,12 +229,15 @@ fun ClassLoadoutScreen(
                         onSelectClass = { sc ->
                             selectedClass = sc
                             selectedWeapon = GameCatalog.weapons[sc.defaultWeaponId]!!
-                            selectedUniform = sc.defaultUniform
+                            if (profile.unlockedItemIds.contains(sc.defaultUniform.id)) {
+                                selectedUniform = sc.defaultUniform
+                            }
                             onSaveLoadout(sc, selectedWeapon, selectedUniform, selectedPerkId)
                         }
                     )
 
                     EquipmentAndUniformPanel(
+                        profile = profile,
                         selectedClass = selectedClass,
                         selectedWeapon = selectedWeapon,
                         selectedUniform = selectedUniform,
@@ -240,7 +250,8 @@ fun ClassLoadoutScreen(
                         onSelectUniform = { u ->
                             selectedUniform = u
                             onSaveLoadout(selectedClass, selectedWeapon, u, selectedPerkId)
-                        }
+                        },
+                        onOpenShop = onOpenShop
                     )
 
                     PerksPanel(
@@ -254,7 +265,6 @@ fun ClassLoadoutScreen(
             }
         }
 
-        // Bottom Action Bar
         Surface(
             color = TrenchBlack,
             border = BorderStroke(1.dp, BrassMuted.copy(alpha = 0.45f))
@@ -281,12 +291,19 @@ fun ClassLoadoutScreen(
                 }
 
                 Ww1CommandButton(
-                    text = "СОХРАНИТЬ И В БОЙ",
+                    text = "МАГАЗИН",
+                    icon = Icons.Filled.ShoppingCart,
+                    onClick = onOpenShop,
+                    modifier = Modifier.weight(0.45f)
+                )
+
+                Ww1CommandButton(
+                    text = "В БОЙ",
                     icon = Icons.Filled.PlayArrow,
                     isPrimary = true,
                     onClick = { onDeployBattle(selectedClass, selectedWeapon, selectedUniform, selectedPerkId) },
                     testTag = "loadout_deploy_button",
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(0.55f)
                 )
             }
         }
@@ -311,9 +328,7 @@ private fun Soldier3DTurntableCard(
 
     DisposableEffect(glView) {
         glView.onResume()
-        onDispose {
-            glView.onPause()
-        }
+        onDispose { glView.onPause() }
     }
 
     Box(
@@ -326,12 +341,8 @@ private fun Soldier3DTurntableCard(
                 }
             }
     ) {
-        AndroidView(
-            factory = { glView },
-            modifier = Modifier.fillMaxSize()
-        )
+        AndroidView(factory = { glView }, modifier = Modifier.fillMaxSize())
 
-        // Subtle vignette & class name badge overlay
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -351,22 +362,10 @@ private fun Soldier3DTurntableCard(
             verticalAlignment = Alignment.Bottom
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = selectedClass.categoryRu,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = BrassGold
-                )
-                Text(
-                    text = selectedClass.titleRu,
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = ParchmentIvory
-                )
+                Text(selectedClass.categoryRu, style = MaterialTheme.typography.labelSmall, color = BrassGold)
+                Text(selectedClass.titleRu, style = MaterialTheme.typography.headlineMedium, color = ParchmentIvory)
             }
-            Text(
-                text = "◄ 3D МОДЕЛЬ ►",
-                style = MaterialTheme.typography.labelSmall,
-                color = AshGrey
-            )
+            Text("◄ 3D МОДЕЛЬ ►", style = MaterialTheme.typography.labelSmall, color = AshGrey)
         }
     }
 }
@@ -406,14 +405,8 @@ private fun ClassSelectorPanel(
                         .fillMaxWidth()
                         .padding(vertical = 2.dp)
                         .clip(RoundedCornerShape(3.dp))
-                        .background(
-                            if (active) BrassMuted.copy(alpha = 0.25f) else SlatePanel.copy(alpha = 0.55f)
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = if (active) BrassGold else Color.Transparent,
-                            shape = RoundedCornerShape(3.dp)
-                        )
+                        .background(if (active) BrassMuted.copy(alpha = 0.25f) else SlatePanel.copy(alpha = 0.55f))
+                        .border(1.dp, if (active) BrassGold else Color.Transparent, RoundedCornerShape(3.dp))
                         .testTag("class_option_${sc.id}")
                         .clickable { onSelectClass(sc) }
                         .padding(horizontal = 10.dp, vertical = 10.dp),
@@ -421,12 +414,7 @@ private fun ClassSelectorPanel(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = sc.titleRu,
-                            tint = if (active) BrassGold else AshGrey,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        Icon(icon, contentDescription = sc.titleRu, tint = if (active) BrassGold else AshGrey, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = sc.titleRu,
@@ -459,20 +447,11 @@ private fun PerksPanel(
         shape = RoundedCornerShape(4.dp)
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
-            Text(
-                text = "УМЕНИЯ",
-                style = MaterialTheme.typography.titleMedium,
-                color = BrassGold,
-                fontWeight = FontWeight.Bold
-            )
+            Text("УМЕНИЯ", style = MaterialTheme.typography.titleMedium, color = BrassGold, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(6.dp))
 
-            val chunked = GameCatalog.perks.chunked(3)
-            chunked.forEach { rowPerks ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
+            GameCatalog.perks.chunked(3).forEach { rowPerks ->
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     rowPerks.forEach { perk ->
                         val active = perk.id == selectedPerkId
                         Column(
@@ -497,26 +476,15 @@ private fun PerksPanel(
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.height(3.dp))
-                            Text(
-                                text = perk.titleRu,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = ParchmentIvory,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            Text(perk.titleRu, style = MaterialTheme.typography.labelSmall, color = ParchmentIvory, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }
             }
 
-            val activePerk = GameCatalog.perks.find { it.id == selectedPerkId }
-            if (activePerk != null) {
+            GameCatalog.perks.find { it.id == selectedPerkId }?.let { activePerk ->
                 Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "${activePerk.titleRu}: ${activePerk.effectRu}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = HorizonBlue
-                )
+                Text("${activePerk.titleRu}: ${activePerk.effectRu}", style = MaterialTheme.typography.bodyMedium, color = HorizonBlue)
             }
         }
     }
@@ -524,13 +492,15 @@ private fun PerksPanel(
 
 @Composable
 private fun EquipmentAndUniformPanel(
+    profile: PlayerProfileState,
     selectedClass: SoldierClass,
     selectedWeapon: WeaponSpec,
     selectedUniform: UniformStyle,
     activeTab: Int,
     onTabChange: (Int) -> Unit,
     onSelectWeapon: (WeaponSpec) -> Unit,
-    onSelectUniform: (UniformStyle) -> Unit
+    onSelectUniform: (UniformStyle) -> Unit,
+    onOpenShop: () -> Unit
 ) {
     Surface(
         color = GunmetalDark.copy(alpha = 0.92f),
@@ -538,13 +508,8 @@ private fun EquipmentAndUniformPanel(
         shape = RoundedCornerShape(4.dp)
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
-            // СНАРЯГА / ФОРМА tabs matching Screenshot #1
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                val tabTitles = listOf("СНАРЯГА", "ФОРМА")
-                tabTitles.forEachIndexed { idx, label ->
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("СНАРЯГА", "ФОРМА").forEachIndexed { idx, label ->
                     val isSel = activeTab == idx
                     Box(
                         modifier = Modifier
@@ -556,11 +521,7 @@ private fun EquipmentAndUniformPanel(
                             .padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = ParchmentIvory
-                        )
+                        Text(label, style = MaterialTheme.typography.labelLarge, color = ParchmentIvory)
                     }
                 }
             }
@@ -568,14 +529,9 @@ private fun EquipmentAndUniformPanel(
             Spacer(modifier = Modifier.height(10.dp))
 
             if (activeTab == 0) {
-                Text(
-                    text = selectedClass.roleSummaryRu,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = AshGrey
-                )
+                Text(selectedClass.roleSummaryRu, style = MaterialTheme.typography.bodyMedium, color = AshGrey)
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Weapon stats bars
                 StatMeterRow("Урон", selectedWeapon.damage, CrimsonAlert)
                 Spacer(modifier = Modifier.height(4.dp))
                 StatMeterRow("Точность", selectedWeapon.accuracy, BrassGold)
@@ -585,11 +541,7 @@ private fun EquipmentAndUniformPanel(
                 StatMeterRow("Дальность", selectedWeapon.range, TacticalGreen)
 
                 Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = "ОСНОВНОЕ ОРУЖИЕ",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = BrassGold
-                )
+                Text("ОСНОВНОЕ ОРУЖИЕ", style = MaterialTheme.typography.labelSmall, color = BrassGold)
                 Spacer(modifier = Modifier.height(4.dp))
 
                 val classWeapons = listOfNotNull(
@@ -598,6 +550,7 @@ private fun EquipmentAndUniformPanel(
                 )
                 classWeapons.forEach { w ->
                     val isW = w.id == selectedWeapon.id
+                    val isUnlocked = profile.unlockedItemIds.contains(w.id)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -605,51 +558,35 @@ private fun EquipmentAndUniformPanel(
                             .clip(RoundedCornerShape(3.dp))
                             .background(if (isW) BrassMuted.copy(alpha = 0.22f) else SlatePanel)
                             .border(1.dp, if (isW) BrassGold else SlateBorder, RoundedCornerShape(3.dp))
-                            .clickable { onSelectWeapon(w) }
+                            .clickable {
+                                if (isUnlocked) onSelectWeapon(w) else onOpenShop()
+                            }
                             .padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
+                            Text(w.nameRu, style = MaterialTheme.typography.titleMedium, color = ParchmentIvory, fontWeight = FontWeight.Bold)
                             Text(
-                                text = w.nameRu,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = ParchmentIvory,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "${w.subtitleRu} • ${w.magazineSize}/${w.reserveAmmo}",
+                                text = if (isUnlocked) "${w.subtitleRu} • ${w.magazineSize}/${w.reserveAmmo}" else "В магазине: ${w.priceStars} ★",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = AshGrey
+                                color = if (isUnlocked) AshGrey else BrassGold
                             )
                         }
                         if (isW) {
-                            Icon(
-                                imageVector = Icons.Filled.Check,
-                                contentDescription = "Выбрано оружие",
-                                tint = BrassGold,
-                                modifier = Modifier.size(18.dp)
-                            )
+                            Icon(Icons.Filled.Check, contentDescription = "Выбрано", tint = BrassGold, modifier = Modifier.size(18.dp))
+                        } else if (!isUnlocked) {
+                            Icon(Icons.Filled.Lock, contentDescription = "В магазине", tint = BrassGold, modifier = Modifier.size(18.dp))
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "Спец. умение: ${selectedClass.specialAbilityRu} (перезарядка ${selectedClass.specialCooldownSec.toInt()}с)",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = BrassGold
-                )
             } else {
-                Text(
-                    text = "ПОЛЕВАЯ УНИФОРМА (обновляет 3D-модель)",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = BrassGold
-                )
+                Text("УНИФОРМА БРИТАНСКОЙ АРМИИ", style = MaterialTheme.typography.labelSmall, color = BrassGold)
                 Spacer(modifier = Modifier.height(6.dp))
 
                 UniformStyle.entries.forEach { u ->
                     val isU = u == selectedUniform
+                    val isUnlocked = profile.unlockedItemIds.contains(u.id)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -657,7 +594,9 @@ private fun EquipmentAndUniformPanel(
                             .clip(RoundedCornerShape(3.dp))
                             .background(if (isU) BrassMuted.copy(alpha = 0.22f) else SlatePanel)
                             .border(1.dp, if (isU) BrassGold else SlateBorder, RoundedCornerShape(3.dp))
-                            .clickable { onSelectUniform(u) }
+                            .clickable {
+                                if (isUnlocked) onSelectUniform(u) else onOpenShop()
+                            }
                             .padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -670,25 +609,17 @@ private fun EquipmentAndUniformPanel(
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         Column(modifier = Modifier.weight(1f)) {
+                            Text(u.titleRu, style = MaterialTheme.typography.titleMedium, color = ParchmentIvory, fontWeight = FontWeight.Bold)
                             Text(
-                                text = u.titleRu,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = ParchmentIvory,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = u.descriptionRu,
+                                text = if (isUnlocked) u.descriptionRu else "Доступно в магазине за ${u.priceStars} ★",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = AshGrey
+                                color = if (isUnlocked) AshGrey else BrassGold
                             )
                         }
                         if (isU) {
-                            Icon(
-                                imageVector = Icons.Filled.Check,
-                                contentDescription = "Выбрана форма",
-                                tint = BrassGold,
-                                modifier = Modifier.size(18.dp)
-                            )
+                            Icon(Icons.Filled.Check, contentDescription = "Надето", tint = BrassGold, modifier = Modifier.size(18.dp))
+                        } else if (!isUnlocked) {
+                            Icon(Icons.Filled.Lock, contentDescription = "В магазине", tint = BrassGold, modifier = Modifier.size(18.dp))
                         }
                     }
                 }

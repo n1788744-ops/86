@@ -21,9 +21,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.TouchApp
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,16 +49,16 @@ import com.example.ui.components.Ww1CommandButton
 import com.example.ui.theme.AshGrey
 import com.example.ui.theme.BrassGold
 import com.example.ui.theme.BrassMuted
+import com.example.ui.theme.CrimsonAlert
 import com.example.ui.theme.GunmetalDark
 import com.example.ui.theme.ParchmentIvory
 import com.example.ui.theme.SlateBorder
-import com.example.ui.theme.SlatePanel
 import com.example.ui.theme.TrenchBlack
 
 @Composable
 fun SettingsScreen(
     profile: PlayerProfileState,
-    onUpdateSettings: (Float, Float, Float, Boolean, Boolean) -> Unit,
+    onUpdateSettings: (Float, Float, Float, Boolean, Boolean, Boolean) -> Unit,
     onBack: () -> Unit
 ) {
     BackHandler(onBack = onBack)
@@ -68,6 +68,7 @@ fun SettingsScreen(
     var sensitivity by remember(profile.lookSensitivity) { mutableFloatStateOf(profile.lookSensitivity) }
     var aimAssist by remember(profile.aimAssistEnabled) { mutableStateOf(profile.aimAssistEnabled) }
     var invertY by remember(profile.invertY) { mutableStateOf(profile.invertY) }
+    var bloodEffects by remember(profile.bloodEffectsEnabled) { mutableStateOf(profile.bloodEffectsEnabled) }
 
     Column(
         modifier = Modifier
@@ -84,7 +85,6 @@ fun SettingsScreen(
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Audio Card
             Surface(
                 color = GunmetalDark,
                 border = BorderStroke(1.dp, SlateBorder),
@@ -94,24 +94,16 @@ fun SettingsScreen(
                 Column(modifier = Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Filled.MusicNote, contentDescription = null, tint = BrassGold)
-                        Text(
-                            text = "  ЗВУК И ОРКЕСТРОВАЯ МУЗЫКА",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = BrassGold
-                        )
+                        Text("  ЗВУК И ОРКЕСТРОВАЯ МУЗЫКА", style = MaterialTheme.typography.titleLarge, color = BrassGold)
                     }
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    Text(
-                        text = "Громкость оркестровой музыки: ${(musicVol * 100).toInt()}%",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = ParchmentIvory
-                    )
+                    Text("Громкость оркестровой музыки: ${(musicVol * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium, color = ParchmentIvory)
                     Slider(
                         value = musicVol,
                         onValueChange = {
                             musicVol = it
-                            onUpdateSettings(musicVol, sfxVol, sensitivity, aimAssist, invertY)
+                            onUpdateSettings(musicVol, sfxVol, sensitivity, aimAssist, invertY, bloodEffects)
                         },
                         colors = SliderDefaults.colors(thumbColor = BrassGold, activeTrackColor = BrassGold)
                     )
@@ -119,25 +111,20 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.VolumeUp, contentDescription = null, tint = AshGrey, modifier = Modifier.size(18.dp))
-                        Text(
-                            text = "  Громкость выстрелов и взрывов: ${(sfxVol * 100).toInt()}%",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = ParchmentIvory
-                        )
+                        Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, tint = AshGrey, modifier = Modifier.size(18.dp))
+                        Text("  Громкость выстрелов и взрывов: ${(sfxVol * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium, color = ParchmentIvory)
                     }
                     Slider(
                         value = sfxVol,
                         onValueChange = {
                             sfxVol = it
-                            onUpdateSettings(musicVol, sfxVol, sensitivity, aimAssist, invertY)
+                            onUpdateSettings(musicVol, sfxVol, sensitivity, aimAssist, invertY, bloodEffects)
                         },
                         colors = SliderDefaults.colors(thumbColor = BrassGold, activeTrackColor = BrassGold)
                     )
                 }
             }
 
-            // Mobile Controls Card
             Surface(
                 color = GunmetalDark,
                 border = BorderStroke(1.dp, SlateBorder),
@@ -147,25 +134,17 @@ fun SettingsScreen(
                 Column(modifier = Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Filled.TouchApp, contentDescription = null, tint = BrassGold)
-                        Text(
-                            text = "  МОБИЛЬНОЕ УПРАВЛЕНИЕ",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = BrassGold
-                        )
+                        Text("  УПРАВЛЕНИЕ И ЭФФЕКТЫ", style = MaterialTheme.typography.titleLarge, color = BrassGold)
                     }
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    Text(
-                        text = "Чувствительность обзора: ${"%.1f".format(sensitivity)}x",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = ParchmentIvory
-                    )
+                    Text("Чувствительность обзора: ${"%.1f".format(sensitivity)}x", style = MaterialTheme.typography.bodyMedium, color = ParchmentIvory)
                     Slider(
                         value = sensitivity,
                         valueRange = 0.4f..2.2f,
                         onValueChange = {
                             sensitivity = it
-                            onUpdateSettings(musicVol, sfxVol, sensitivity, aimAssist, invertY)
+                            onUpdateSettings(musicVol, sfxVol, sensitivity, aimAssist, invertY, bloodEffects)
                         },
                         colors = SliderDefaults.colors(thumbColor = BrassGold, activeTrackColor = BrassGold)
                     )
@@ -183,9 +162,30 @@ fun SettingsScreen(
                             checked = aimAssist,
                             onCheckedChange = {
                                 aimAssist = it
-                                onUpdateSettings(musicVol, sfxVol, sensitivity, aimAssist, invertY)
+                                onUpdateSettings(musicVol, sfxVol, sensitivity, aimAssist, invertY, bloodEffects)
                             },
                             colors = SwitchDefaults.colors(checkedThumbColor = TrenchBlack, checkedTrackColor = BrassGold)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Эффекты крови", style = MaterialTheme.typography.bodyLarge, color = ParchmentIvory)
+                            Text("3D-брызги, следы на земле и алые брызги на экране", style = MaterialTheme.typography.bodyMedium, color = AshGrey)
+                        }
+                        Switch(
+                            checked = bloodEffects,
+                            onCheckedChange = {
+                                bloodEffects = it
+                                onUpdateSettings(musicVol, sfxVol, sensitivity, aimAssist, invertY, bloodEffects)
+                            },
+                            colors = SwitchDefaults.colors(checkedThumbColor = ParchmentIvory, checkedTrackColor = CrimsonAlert)
                         )
                     }
 
@@ -204,7 +204,7 @@ fun SettingsScreen(
                             checked = invertY,
                             onCheckedChange = {
                                 invertY = it
-                                onUpdateSettings(musicVol, sfxVol, sensitivity, aimAssist, invertY)
+                                onUpdateSettings(musicVol, sfxVol, sensitivity, aimAssist, invertY, bloodEffects)
                             },
                             colors = SwitchDefaults.colors(checkedThumbColor = TrenchBlack, checkedTrackColor = BrassGold)
                         )

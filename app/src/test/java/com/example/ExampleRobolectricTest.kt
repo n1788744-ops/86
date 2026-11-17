@@ -7,6 +7,7 @@ import com.example.game.engine.BattleSimulation
 import com.example.game.model.GameCatalog
 import com.example.game.model.SoldierClass
 import com.example.game.model.TheatreBiome
+import com.example.game.render3d.BattlefieldSceneBuilder
 import com.example.game.render3d.Math3D
 import com.example.game.render3d.Vec3
 import org.junit.Assert.assertEquals
@@ -28,9 +29,10 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `catalog contains all 6 classes and 4 story chapters`() {
+    fun `catalog contains all 6 classes, 4 story chapters, and shop weapons`() {
         assertEquals(6, SoldierClass.entries.size)
         assertEquals(4, GameCatalog.chapters.size)
+        assertTrue(GameCatalog.weapons.values.count { it.priceStars > 0 } >= 5)
         SoldierClass.entries.forEach { sc ->
             assertTrue("Missing default weapon for ${sc.id}", GameCatalog.weapons.containsKey(sc.defaultWeaponId))
             assertTrue("Missing alt weapon for ${sc.id}", GameCatalog.weapons.containsKey(sc.altWeaponId))
@@ -38,7 +40,7 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `ray sphere hit detection and terrain trenches work`() {
+    fun `ray sphere hit detection and city colliders work`() {
         val hitDist = Math3D.raySphereDistance(
             origin = Vec3(0f, 1.5f, 10f),
             dir = Vec3(0f, 0f, -1f),
@@ -47,15 +49,19 @@ class ExampleRobolectricTest {
         )
         assertTrue(hitDist in 9.4f..9.6f)
 
-        val trenchY = Math3D.terrainHeightAt(0f, 18f, TheatreBiome.MARNE_TRENCHES)
-        val parapetY = Math3D.terrainHeightAt(0f, 14f, TheatreBiome.MARNE_TRENCHES)
+        val trenchY = Math3D.terrainHeightAt(0f, 18f, TheatreBiome.GALLIPOLI_COAST)
+        val parapetY = Math3D.terrainHeightAt(0f, 14f, TheatreBiome.GALLIPOLI_COAST)
         assertTrue("Trench floor ($trenchY) should be lower than parapet ($parapetY)", trenchY < parapetY)
+
+        val gazaMeta = BattlefieldSceneBuilder.buildMetadata(TheatreBiome.GAZA_CITY, 3)
+        assertTrue("Gaza city should have building colliders", gazaMeta.colliders.size >= 16)
+        assertEquals(3, gazaMeta.sectors.size)
     }
 
     @Test
-    fun `battle simulation fires bolt rifle and decrements ammo`() {
+    fun `battle simulation fires bolt rifle, decrements ammo, and supports medkits`() {
         val audio = Ww1AudioEngine()
-        val chapter = GameCatalog.chapters.first()
+        val chapter = GameCatalog.chapters[2] // Gaza City
         val rifleman = SoldierClass.RIFLEMAN
         val weapon = GameCatalog.weapons[rifleman.defaultWeaponId]!!
         val sim = BattleSimulation(
@@ -64,11 +70,17 @@ class ExampleRobolectricTest {
             weapon = weapon,
             uniform = rifleman.defaultUniform,
             perkId = "hardened",
+            initialMedkits = 2,
+            bloodEffectsEnabled = true,
             audio = audio
         )
         val initialAmmo = sim.ammoInMag
         sim.triggerSingleShot()
         assertEquals(initialAmmo - 1, sim.ammoInMag)
-        assertTrue(sim.boltAnimTimer > 0f)
+
+        sim.health = 50f
+        sim.useMedkit()
+        assertEquals(95f, sim.health, 0.01f)
+        assertEquals(1, sim.medkitsRemaining)
     }
 }

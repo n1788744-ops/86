@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.game.model.GameScreen
-import com.example.game.model.TheatreBiome
 import com.example.game.render3d.BattleGLRenderer
 import com.example.game.viewmodel.GameViewModel
 import com.example.ui.screens.BattleHudOverlay
@@ -25,6 +24,7 @@ import com.example.ui.screens.CampaignScreen
 import com.example.ui.screens.ClassLoadoutScreen
 import com.example.ui.screens.MainMenuScreen
 import com.example.ui.screens.SettingsScreen
+import com.example.ui.screens.ShopScreen
 import com.example.ui.theme.Ww1Theme
 
 class MainActivity : ComponentActivity() {
@@ -59,6 +59,7 @@ private fun Ww1GameRoot(viewModel: GameViewModel) {
     val hudSnapshot by viewModel.hudSnapshot.collectAsState()
     val isPaused by viewModel.isPaused.collectAsState()
     val activeSim by viewModel.activeSimulation.collectAsState()
+    val shopNotice by viewModel.shopNotice.collectAsState()
 
     val context = LocalContext.current
     val battleRenderer = remember {
@@ -67,13 +68,11 @@ private fun Ww1GameRoot(viewModel: GameViewModel) {
         })
     }
 
-    // Keep renderer synchronized with current mode & simulation
     battleRenderer.simulation = activeSim
     battleRenderer.isMenuPreviewMode = (currentScreen != GameScreen.BATTLE) || isPaused
     battleRenderer.menuBiome = selectedChapter.theatre
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Shared live 3D OpenGL ES Battlefield (orbits behind MainMenu, renders full FPS in Battle!)
         if (currentScreen == GameScreen.MAIN_MENU || currentScreen == GameScreen.BATTLE) {
             val glView = remember(context) {
                 GLSurfaceView(context).apply {
@@ -88,10 +87,7 @@ private fun Ww1GameRoot(viewModel: GameViewModel) {
                     glView.onPause()
                 }
             }
-            AndroidView(
-                factory = { glView },
-                modifier = Modifier.fillMaxSize()
-            )
+            AndroidView(factory = { glView }, modifier = Modifier.fillMaxSize())
         }
 
         when (currentScreen) {
@@ -100,7 +96,8 @@ private fun Ww1GameRoot(viewModel: GameViewModel) {
                     profile = profile,
                     onOpenCampaign = { viewModel.navigateTo(GameScreen.CAMPAIGN) },
                     onOpenClasses = { viewModel.navigateTo(GameScreen.CLASS_LOADOUT) },
-                    onQuickBattle = { viewModel.startBattle(selectedChapter) },
+                    onOpenShop = { viewModel.navigateTo(GameScreen.SHOP) },
+                    onQuickBattle = { viewModel.startBattle(com.example.game.model.GameCatalog.chapters[2]) }, // Gaza 3D City quick battle!
                     onOpenSettings = { viewModel.navigateTo(GameScreen.SETTINGS) }
                 )
             }
@@ -124,14 +121,26 @@ private fun Ww1GameRoot(viewModel: GameViewModel) {
                         viewModel.saveLoadout(sClass, weapon, uniform, perkId)
                         viewModel.startBattle(selectedChapter)
                     },
+                    onOpenShop = { viewModel.navigateTo(GameScreen.SHOP) },
+                    onBack = { viewModel.navigateTo(GameScreen.MAIN_MENU) }
+                )
+            }
+            GameScreen.SHOP -> {
+                ShopScreen(
+                    profile = profile,
+                    noticeText = shopNotice,
+                    onBuyWeapon = { viewModel.buyWeapon(it) },
+                    onEquipWeapon = { viewModel.equipWeaponFromShop(it) },
+                    onBuyUniform = { viewModel.buyUniform(it) },
+                    onBuyConsumable = { viewModel.buyConsumable(it) },
                     onBack = { viewModel.navigateTo(GameScreen.MAIN_MENU) }
                 )
             }
             GameScreen.SETTINGS -> {
                 SettingsScreen(
                     profile = profile,
-                    onUpdateSettings = { m, s, sens, aa, inv ->
-                        viewModel.updateSettings(m, s, sens, aa, inv)
+                    onUpdateSettings = { m, s, sens, aa, inv, blood ->
+                        viewModel.updateSettings(m, s, sens, aa, inv, blood)
                     },
                     onBack = { viewModel.navigateTo(GameScreen.MAIN_MENU) }
                 )
